@@ -1,0 +1,70 @@
+---
+default_install_hook_types: [pre-commit, commit-msg]
+repos:
+  - repo: https://github.com/lyz-code/yamlfix
+    rev: 1.17.0
+    hooks:
+      - id: yamlfix
+        args: [-c, .yamlfix.toml]
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: check-added-large-files
+      - id: check-case-conflict
+      - id: check-merge-conflict
+      - id: trailing-whitespace
+      - id: check-json
+      - id: check-toml
+      - id: check-yaml
+      - id: no-commit-to-branch
+      - id: mixed-line-ending
+      - id: end-of-file-fixer
+  - repo: local
+    hooks:
+      - id: sensitive-data-leak-urls
+        name: Sensitive data leak - URLs
+        entry: (?<!polarion-opensource@)(?<!www\.)sbb\.ch
+        language: pygrep
+        types: [text]
+      - id: sensitive-data-leak-ue-numbers
+        name: Sensitive data leak - UE numbers
+        entry: \b([uUeE]{1,2})\d{5,6}\b
+        language: pygrep
+        types: [text]
+  - repo: local
+    hooks:
+      - id: mypy
+        name: mypy
+        entry: poetry run mypy
+        language: system
+        types: [python]
+        exclude: (^tests/)
+        args: [--config-file, pyproject.toml]
+        require_serial: true  # Serial processing is required for mypy (better performance and error reporting)
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.9.4
+    hooks:
+      - id: ruff-format
+      - id: ruff
+  - repo: https://github.com/python-poetry/poetry
+    rev: 2.0.1
+    hooks:
+      - id: poetry-lock
+      - id: poetry-check
+  - repo: https://github.com/zricethezav/gitleaks
+    rev: v8.23.3
+    hooks:
+      - id: gitleaks
+  - repo: https://github.com/grigoriev/pre-commit-check-git-user
+    rev: v0.9.0
+    hooks:
+      - id: check-git-config-user-email
+        args: [--templates, ^\S+\.\S+@sbb\.ch$]
+  - repo: https://github.com/commitizen-tools/commitizen
+    rev: v4.1.1
+    hooks:
+      - id: commitizen
+  - repo: https://github.com/hadolint/hadolint
+    rev: v2.12.0
+    hooks:
+      - id: hadolint
