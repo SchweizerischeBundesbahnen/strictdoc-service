@@ -16,7 +16,7 @@
         "minor"
       ],
       "matchPackageNames": [
-        "/^strictdoc$/"
+        "strictdoc"
       ]
     },
     {
@@ -31,7 +31,7 @@
         "major"
       ],
       "matchPackageNames": [
-        "/^strictdoc$/"
+        "strictdoc"
       ]
     }
   ]

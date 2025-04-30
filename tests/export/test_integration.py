@@ -6,6 +6,8 @@ from http import HTTPStatus
 
 import pytest
 import requests
+from fastapi.testclient import TestClient
+from strictdoc.backend.sdoc.models.document import Document
 
 from tests.conftest import TestParameters
 
@@ -26,7 +28,6 @@ def test_version_endpoint(test_parameters: TestParameters) -> None:
     [
         ("html", "application/zip", ".zip"),
         ("json", "application/json", ".json"),
-        ("csv", "text/csv", ".csv"),
         ("excel", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", ".xlsx"),
         ("reqif-sdoc", "application/xml", ".reqif"),
         ("reqifz-sdoc", "application/zip", ".reqifz"),

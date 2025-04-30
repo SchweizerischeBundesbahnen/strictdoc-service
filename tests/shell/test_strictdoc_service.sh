@@ -134,7 +134,6 @@ log "Version info: $VERSION_JSON"
 # Create a temporary directory for test files
 TEST_DIR=$(mktemp -d)
 SDOC_FILE="$TEST_DIR/input.sdoc"
-CSV_FILE="$TEST_DIR/output.csv"
 JSON_FILE="$TEST_DIR/output.json"
 HTML_FILE="$TEST_DIR/output.zip"
 REQIF_FILE="$TEST_DIR/output.reqif"
@@ -170,74 +169,6 @@ This is another test requirement
 
 [/SECTION]
 EOF
-
-# Test 2: Export SDOC to CSV
-log "Test 2: Exporting SDOC to CSV..."
-
-# Make the export request using the file path
-EXPORT_RESPONSE=$(curl -s -o "${CSV_FILE}" -w "%{http_code}" \
-    -X POST \
-    -H "Content-Type: text/plain" \
-    --data-binary "@${SDOC_FILE}" \
-    "${BASE_URL}/export?format=csv&file_name=test-export")
-
-# This is a debug curl to verify parameters
-curl -v -X POST \
-    -H "Content-Type: text/plain" \
-    --data-binary "@${SDOC_FILE}" \
-    "${BASE_URL}/export?format=csv&file_name=test-export" > "${TEST_DIR}/debug.out" 2>&1
-log "Debug curl command executed, check ${TEST_DIR}/debug.out for details"
-
-if [ "$EXPORT_RESPONSE" -ne 200 ]; then
-    # Show the error response and file contents for debugging
-    ERROR_CONTENT=$(cat ${CSV_FILE})
-    log "SDOC file contents:"
-    cat "${SDOC_FILE}"
-    error "Export endpoint returned non-200 status code: $EXPORT_RESPONSE\nError: $ERROR_CONTENT"
-fi
-
-log "Export response status code: $EXPORT_RESPONSE"
-
-# Verify CSV content
-if [ ! -s "${CSV_FILE}" ]; then
-    error "CSV response is empty"
-fi
-
-# Check file type
-file "${CSV_FILE}" > "${TEST_DIR}/file_type.txt"
-log "File type: $(cat ${TEST_DIR}/file_type.txt)"
-
-# Display file size
-log "CSV file size: $(wc -c < ${CSV_FILE}) bytes"
-
-# Display CSV contents for debugging (first 100 bytes as hex)
-log "CSV file contents (hex):"
-xxd -l 100 "${CSV_FILE}" | head -n 10
-
-# Save CSV file for inspection
-SAVED_CSV="test-export.csv"
-cp "${CSV_FILE}" "${SAVED_CSV}"
-log "CSV file saved to ${SAVED_CSV}"
-
-# Get and display the actual header
-ACTUAL_HEADER=$(head -n 1 "${CSV_FILE}")
-log "Actual CSV header: ${ACTUAL_HEADER}"
-
-# Temporarily comment out the header check
-: '
-if ! head -n 1 "${CSV_FILE}" | grep -q "UID,Status,Title,Statement,Rationale"; then
-    error "CSV file does not have the expected header structure"
-fi
-'
-
-# Check if CSV contains expected content
-if ! grep -q "REQ-001" "${CSV_FILE}" || ! grep -q "REQ-002" "${CSV_FILE}"; then
-    error "CSV file does not contain expected requirement UIDs"
-fi
-
-if ! grep -q "Draft" "${CSV_FILE}" || ! grep -q "Approved" "${CSV_FILE}"; then
-    error "CSV file does not contain expected status values"
-fi
 
 # Test 2a: Export SDOC to JSON
 log "Test 2a: Exporting SDOC to JSON..."

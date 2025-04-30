@@ -4,10 +4,12 @@ import logging
 import os
 import shutil
 import tempfile
+from collections.abc import Awaitable, Callable
 from http import HTTPStatus
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union, Awaitable
+from typing import Any, Annotated
 
+import aiofiles
 import uvicorn
 from fastapi import Body, FastAPI, HTTPException, Query
 from fastapi.exceptions import RequestValidationError
@@ -19,14 +21,17 @@ from starlette.requests import Request
 from starlette.responses import Response
 
 # Import StrictDoc version directly
-from strictdoc import __version__ as strictdoc_version  # type: ignore
-from strictdoc.backend.sdoc.pickle_cache import PickleCache  # type: ignore
-from strictdoc.backend.sdoc.reader import SDReader  # type: ignore
-from strictdoc.cli.main import ProjectConfig  # type: ignore
-from strictdoc.core.environment import SDocRuntimeEnvironment  # type: ignore
+from strictdoc import __version__ as strictdoc_version  # type: ignore[import]
+from strictdoc.backend.sdoc.pickle_cache import PickleCache  # type: ignore[import]
+from strictdoc.backend.sdoc.reader import SDReader  # type: ignore[import]
+from strictdoc.cli.main import ProjectConfig  # type: ignore[import]
+from strictdoc.core.environment import SDocRuntimeEnvironment  # type: ignore[import]
 
 # Create a custom logger
 logger = logging.getLogger(__name__)
+
+# Service version
+SERVICE_VERSION = os.getenv("STRICTDOC_SERVICE_VERSION", "dev")
 
 app = FastAPI(
     title="StrictDoc Service API",
@@ -37,7 +42,22 @@ app = FastAPI(
 
 # Custom middleware for format validation
 class FormatValidationMiddleware(BaseHTTPMiddleware):
+    """Middleware for validating export format parameter.
+
+    This middleware intercepts requests to the export endpoint and validates
+    that the format parameter is one of the supported export formats.
+    """
+
     async def dispatch(self, request: Request, call_next: Callable[[Request], Any]) -> JSONResponse:
+        """Process the request and validate the format parameter.
+
+        Args:
+            request: The incoming request
+            call_next: The next middleware in the chain
+
+        Returns:
+            JSONResponse: The response from the next middleware or an error response
+        """
         # Only intercept requests to the export endpoint
         if request.url.path == "/export" and request.method == "POST":
             format_param = request.query_params.get("format")
@@ -52,8 +72,16 @@ app.add_middleware(FormatValidationMiddleware)
 
 # Add exception handler for FastAPI's validation errors
 @app.exception_handler(RequestValidationError)
-async def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
-    """Convert 422 validation errors to 400 Bad Request for format validation."""
+async def validation_exception_handler(exc: RequestValidationError) -> JSONResponse:
+    """Convert 422 validation errors to 400 Bad Request for format validation.
+
+    Args:
+        exc: The validation error
+
+    Returns:
+        JSONResponse: The error response
+
+    """
     error_details = []
     format_validation_error = False
 
@@ -85,14 +113,27 @@ EXPORT_FORMATS = [
     "sdoc",
     "doxygen",
     "spdx",
-    "csv",  # We add CSV as a custom format that we'll handle ourselves
 ]
 
 # Monkey patch PickleCache.get_cached_file_path to handle Path objects
 original_get_cached_file_path = PickleCache.get_cached_file_path
 
 
-def patched_get_cached_file_path(file_path: Union[str, Path], project_config: Any, content_kind: str) -> str:
+def patched_get_cached_file_path(file_path: str | Path, project_config: ProjectConfig, content_kind: str) -> str:
+    """Get the cached file path, handling Path objects.
+
+    This is a monkey-patched version of PickleCache.get_cached_file_path that
+    handles Path objects correctly.
+
+    Args:
+        file_path: The path to the file, as string or Path
+        project_config: The project configuration
+        content_kind: The kind of content being cached
+
+    Returns:
+        str: The path to the cached file
+
+    """
     # Convert file_path to str if it's a Path
     if hasattr(file_path, "absolute"):  # It's likely a Path object
         file_path = str(file_path.absolute())
@@ -105,14 +146,24 @@ PickleCache.get_cached_file_path = patched_get_cached_file_path
 
 # Request and response models
 class VersionInfo(BaseModel):
+    """Version information response model.
+
+    Contains version information about Python, StrictDoc, and the platform.
+    """
+
     python: str
     strictdoc: str
     platform: str
     timestamp: str
-    strictdocService: str | None = None
+    strictdoc_service: str | None = None
 
 
 class ErrorResponse(BaseModel):
+    """Error response model.
+
+    Contains error information and optional details.
+    """
+
     error: str
     details: str | None = None
 
@@ -120,13 +171,22 @@ class ErrorResponse(BaseModel):
 # Middleware for logging
 @app.middleware("http")
 async def log_requests(request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
-    logging.info(
+    """Log incoming requests and their responses.
+
+    Args:
+        request: The incoming request
+        call_next: The next middleware in the chain
+
+    Returns:
+        Response: The response from the next middleware
+    """
+    logger.info(
         "Request: %s %s",
         request.method,
         request.url.path,
     )
     response = await call_next(request)
-    logging.info(
+    logger.info(
         "Response: %s %s, Status: %s",
         request.method,
         request.url.path,
@@ -135,41 +195,28 @@ async def log_requests(request: Request, call_next: Callable[[Request], Awaitabl
     return response
 
 
-@app.get("/version", response_model=VersionInfo)
-async def version() -> dict:
-    """Get version information.
+@app.get("/version")
+async def get_version() -> VersionInfo:
+    """Get version information about the service and its dependencies.
 
     Returns:
-        dict: Version information
+        VersionInfo: Version information about Python, StrictDoc, and the platform.
 
     """
     import platform
     import sys
     import time
-    import strictdoc
 
     # Get Python version
-    python_version = f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
-
-    # Get StrictDoc version
-    strictdoc_version = strictdoc.__version__
+    python_version = sys.version.split()[0]
 
     # Get platform info
     platform_info = platform.platform()
 
-    # Get timestamp
-    build_timestamp = os.getenv("STRICTDOC_SERVICE_BUILD_TIMESTAMP", time.strftime("%Y-%m-%dT%H:%M:%SZ"))
+    # Get current timestamp
+    timestamp = time.strftime("%Y-%m-%d %H:%M:%S %Z", time.localtime())
 
-    # Get service version
-    service_version = os.getenv("STRICTDOC_SERVICE_VERSION", "dev")
-
-    return {
-        "python": python_version,
-        "strictdoc": strictdoc_version,
-        "platform": platform_info,
-        "timestamp": build_timestamp,
-        "strictdocService": service_version,
-    }
+    return VersionInfo(python=python_version, strictdoc=strictdoc_version, platform=platform_info, timestamp=timestamp, strictdoc_service=SERVICE_VERSION)
 
 
 def validate_export_format(export_format: str) -> None:
@@ -190,12 +237,11 @@ def process_sdoc_content(content: str, input_file: Path) -> None:
     """Process and validate SDOC content.
 
     Args:
-        content: SDOC content to process
-        input_file: Path to write content to
+        sdoc_content: The SDOC content to validate
+        input_file: Path to the input file
 
     Raises:
-        HTTPException: If content is invalid
-
+        HTTPException: If the content is invalid
     """
     # Normalize line endings to Unix style
     content = content.replace("\r\n", "\n").replace("\r", "\n")
@@ -275,116 +321,15 @@ def export_with_action(input_file: Path, output_dir: Path, format_name: str) -> 
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # Set up command
-    import csv
     import subprocess
 
     try:
-        if format_name == "csv":
-            # For CSV, we'll bypass StrictDoc and generate it ourselves
-            # since this is just for testing
-            from strictdoc.backend.sdoc.reader import SDReader
-
-            # Create simple environment and config
-            environment = SDocRuntimeEnvironment(str(input_file.parent))
-            project_config = ProjectConfig(
-                environment=environment,
-                project_title=ProjectConfig.DEFAULT_PROJECT_TITLE,
-                dir_for_sdoc_assets=str(input_file.parent),
-                dir_for_sdoc_cache=str(input_file.parent),
-                project_features=ProjectConfig.DEFAULT_FEATURES,
-                server_host=ProjectConfig.DEFAULT_SERVER_HOST,
-                server_port=ProjectConfig.DEFAULT_SERVER_PORT,
-                include_doc_paths=[],
-                exclude_doc_paths=[],
-                source_root_path=None,
-                include_source_paths=[],
-                exclude_source_paths=[],
-                html2pdf_template=None,
-                bundle_document_version=None,
-                bundle_document_date=None,
-                traceability_matrix_relation_columns=None,
-                reqif_profile="",
-                reqif_multiline_is_xhtml=False,
-                reqif_enable_mid=False,
-                reqif_import_markup=None,
-                config_last_update=None,
-                chromedriver=None,
-            )
-
-            # Read document with SDReader
-            reader = SDReader()
-            document = reader.read_from_file(str(input_file), project_config)
-
-            # Extract requirements data
-            requirements_data = []
-            for section in document.section_contents:
-                if hasattr(section, "parts"):
-                    for part in section.parts:
-                        if hasattr(part, "requirements"):
-                            for req in part.requirements:
-                                row = {
-                                    "UID": req.uid if hasattr(req, "uid") else "",
-                                    "Status": req.status if hasattr(req, "status") else "",
-                                    "Title": req.title if hasattr(req, "title") else "",
-                                    "Statement": req.statement if hasattr(req, "statement") else "",
-                                    "Rationale": req.rationale if hasattr(req, "rationale") else "",
-                                }
-                                requirements_data.append(row)
-                        elif hasattr(part, "uid"):  # Part is a requirement
-                            req = part
-                            row = {
-                                "UID": req.uid if hasattr(req, "uid") else "",
-                                "Status": req.status if hasattr(req, "status") else "",
-                                "Title": req.title if hasattr(req, "title") else "",
-                                "Statement": req.statement if hasattr(req, "statement") else "",
-                                "Rationale": req.rationale if hasattr(req, "rationale") else "",
-                            }
-                            requirements_data.append(row)
-                elif hasattr(section, "requirements"):
-                    for req in section.requirements:
-                        row = {
-                            "UID": req.uid if hasattr(req, "uid") else "",
-                            "Status": req.status if hasattr(req, "status") else "",
-                            "Title": req.title if hasattr(req, "title") else "",
-                            "Statement": req.statement if hasattr(req, "statement") else "",
-                            "Rationale": req.rationale if hasattr(req, "rationale") else "",
-                        }
-                        requirements_data.append(row)
-                elif hasattr(section, "uid"):  # Section is a requirement
-                    req = section
-                    row = {
-                        "UID": req.uid if hasattr(req, "uid") else "",
-                        "Status": req.status if hasattr(req, "status") else "",
-                        "Title": req.title if hasattr(req, "title") else "",
-                        "Statement": req.statement if hasattr(req, "statement") else "",
-                        "Rationale": req.rationale if hasattr(req, "rationale") else "",
-                    }
-                    requirements_data.append(row)
-
-            # Write to CSV
-            file_name = input_file.stem + ".csv"
-            csv_file_path = output_dir / file_name
-
-            with open(csv_file_path, "w", newline="") as csvfile:
-                fieldnames = ["UID", "Status", "Title", "Statement", "Rationale"]
-                writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-                writer.writeheader()
-                for row in requirements_data:
-                    writer.writerow(row)
-
-            logging.info(f"Created CSV file at {csv_file_path}")
-
-            # Debug: check file contents
-            with open(csv_file_path) as f:
-                header = f.readline().strip()
-                logging.info(f"CSV header: {header}")
-        else:
-            # For other formats, use subprocess to call the strictdoc command line
-            cmd = ["strictdoc", "export", "--formats", format_name, "--output-dir", str(output_dir), str(input_file)]
-            logging.info(f"Running command: {' '.join(cmd)}")
-            result = subprocess.run(cmd, capture_output=True, text=True, check=True)
-            if result.stderr:
-                logging.warning(f"StrictDoc CLI warnings: {result.stderr}")
+        # For other formats, use subprocess to call the strictdoc command line
+        cmd = ["strictdoc", "export", "--formats", format_name, "--output-dir", str(output_dir), str(input_file)]
+        logging.info(f"Running command: {' '.join(cmd)}")
+        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        if result.stderr:
+            logging.warning(f"StrictDoc CLI warnings: {result.stderr}")
     except Exception as e:
         logging.exception(f"Export failed: {e!s}")
         raise RuntimeError(f"Export failed: {e!s}")
@@ -431,9 +376,6 @@ def export_to_format(input_file: Path, output_dir: Path, export_format: str) -> 
     elif export_format == "reqifz-sdoc":
         extension = "reqifz"
         mime_type = "application/zip"
-    elif export_format == "csv":
-        extension = "csv"
-        mime_type = "text/csv"
     else:
         extension = export_format
         mime_type = "text/plain"
@@ -452,24 +394,7 @@ def export_to_format(input_file: Path, output_dir: Path, export_format: str) -> 
         shutil.make_archive(str(output_zip).replace(".zip", ""), "zip", output_dir)
         return output_zip, extension, mime_type
 
-    # For CSV, find the exact file since the filename is based on the document name
-    if export_format == "csv":
-        # The CSV exporter in export_with_action creates a file with the document's base name
-        document_base_name = input_file.stem
-        csv_file = output_dir / f"{document_base_name}.csv"
-
-        if not csv_file.exists():
-            # Try looking for any CSV file as fallback
-            csv_files = list(output_dir.glob("*.csv"))
-            if csv_files:
-                csv_file = csv_files[0]
-            else:
-                raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail="No CSV file found in output after export")
-
-        logging.info(f"Found CSV file at {csv_file}")
-        return csv_file, extension, mime_type
-
-    # For other formats, find the exported file
+    # Find the exported file
     pattern = "**/*.pdf" if export_format == "pdf" else f"*.{extension}"
     exported_files = list(output_dir.glob(pattern))
 
@@ -507,10 +432,6 @@ async def export_document(
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail="Invalid SDOC content: Missing [DOCUMENT] section")
 
     try:
-        # Special handling for CSV which isn't directly supported by StrictDoc CLI
-        if format == "csv":
-            return await export_csv(sdoc_content, file_name)
-
         # Create temporary directories for processing
         with tempfile.TemporaryDirectory() as temp_dir:
             temp_dir_path = Path(temp_dir)
@@ -628,97 +549,6 @@ async def export_document(
         raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail=f"Export failed: {e!s}")
 
 
-async def export_csv(sdoc_content: str, file_name: str) -> FileResponse:
-    """Export document to CSV format.
-
-    Args:
-        sdoc_content: SDOC content to export
-        file_name: Name for the exported file
-
-    Returns:
-        FileResponse: CSV file
-
-    """
-    logging.info("CSV export requested - using custom CSV generator")
-
-    # Basic validation of SDOC content
-    if not sdoc_content or "[DOCUMENT]" not in sdoc_content:
-        raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail="Invalid SDOC content: Missing [DOCUMENT] section")
-
-    # Create a temporary directory
-    with tempfile.TemporaryDirectory() as temp_dir:
-        temp_dir_path = Path(temp_dir)
-
-        # Save the SDOC content
-        input_file = temp_dir_path / "input.sdoc"
-        with open(input_file, "w", encoding="utf-8") as f:
-            f.write(sdoc_content)
-
-        logging.info(f"Saved SDOC content to {input_file}")
-
-        # Create a CSV file with the expected format
-        csv_file = temp_dir_path / f"{file_name}.csv"
-
-        # Parse the SDOC content manually to extract requirements
-        with open(csv_file, "w", newline="", encoding="utf-8") as f:
-            import csv
-            import re
-
-            # Create CSV writer
-            writer = csv.writer(f)
-
-            # Write header
-            writer.writerow(["UID", "Status", "Title", "Statement", "Rationale"])
-
-            # Extract data using regex
-            uid_pattern = r"\[REQUIREMENT\][\r\n]+UID: ([^\r\n]+)"
-            status_pattern = r"STATUS: ([^\r\n]+)"
-            title_pattern = r"TITLE: ([^\r\n]+)"
-            statement_pattern = r"STATEMENT: >>>(.*?)<<<"
-            rationale_pattern = r"RATIONALE: >>>(.*?)<<<"
-
-            # Find all requirements data
-            uids = re.findall(uid_pattern, sdoc_content, re.DOTALL)
-            statuses = re.findall(status_pattern, sdoc_content, re.DOTALL)
-            titles = re.findall(title_pattern, sdoc_content, re.DOTALL)
-            statements = re.findall(statement_pattern, sdoc_content, re.DOTALL)
-            rationales = re.findall(rationale_pattern, sdoc_content, re.DOTALL)
-
-            logging.info(f"Found {len(uids)} UIDs in SDOC: {uids}")
-
-            # Write rows
-            for i in range(len(uids)):
-                uid = uids[i] if i < len(uids) else ""
-                status = statuses[i] if i < len(statuses) else ""
-                title = titles[i] if i < len(titles) else ""
-                statement = statements[i].strip() if i < len(statements) else ""
-                rationale = rationales[i].strip() if i < len(rationales) else ""
-
-                writer.writerow([uid, status, title, statement, rationale])
-
-        logging.info(f"Created CSV file at {csv_file}")
-
-        # Debug: Print first line of CSV
-        with open(csv_file, encoding="utf-8") as f:
-            first_line = f.readline().strip()
-            logging.info(f"CSV first line: {first_line}")
-
-        # Create a persistent copy of the CSV file
-        persistent_temp_file = Path(tempfile.gettempdir()) / f"{file_name}.csv"
-        shutil.copy2(csv_file, persistent_temp_file)
-
-        logging.info(f"Copied CSV file to persistent location: {persistent_temp_file}")
-
-        # Create cleanup function
-        def cleanup_temp_file() -> None:
-            try:
-                if persistent_temp_file.exists():
-                    persistent_temp_file.unlink()
-            except Exception as e:
-                logging.exception(f"Failed to clean up temporary file: {e!s}")
-
-        # Return the CSV file
-        return FileResponse(path=persistent_temp_file, media_type="text/csv", filename=f"{file_name}.csv", background=BackgroundTask(cleanup_temp_file))
 
 
 def start_server(port: int) -> None:

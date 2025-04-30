@@ -12,7 +12,8 @@ dependencies = [
     "strictdoc==0.8.0",
     "python-multipart==0.0.20",
     "fastapi==0.115.12",
-    "uvicorn==0.34.2"
+    "uvicorn==0.34.2",
+    "aiofiles==24.1.0"
 ]
 
 [tool.poetry]

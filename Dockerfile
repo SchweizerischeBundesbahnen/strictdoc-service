@@ -67,11 +67,11 @@ USER appuser
 # Verify StrictDoc is installed and working
 RUN strictdoc --version
 
+EXPOSE ${PORT}
+
 # Add healthcheck
 HEALTHCHECK --interval=5s --timeout=3s --start-period=5s --retries=3 \
   CMD curl -f http://localhost:${PORT}/version || exit 1
-
-EXPOSE ${PORT}
 
 ENTRYPOINT ["./entrypoint.sh"]
 

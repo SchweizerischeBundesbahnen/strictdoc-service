@@ -112,7 +112,7 @@ def docker_setup() -> Generator[bool]:
         import tempfile
         from pathlib import Path
 
-        # Clean up any previous test CSV files in the project root
+        # Clean up any previous test files in the project root
         for temp_file in Path(".").glob("test-export*"):
             if temp_file.is_file():
                 logger.info(f"Removing temporary file: {temp_file}")

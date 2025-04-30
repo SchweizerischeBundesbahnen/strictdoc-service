@@ -12,7 +12,6 @@ from pytest_mock import MockFixture
     [
         ("html", "application/zip", ".zip", b"test content"),
         ("json", "application/json", ".json", b'{"test": "content"}'),
-        ("csv", "text/csv", ".csv", b"test,content"),
         ("excel", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", ".xlsx", b"test content"),
         ("reqif-sdoc", "application/xml", ".reqif", b"<?xml version='1.0'?>"),
         ("reqifz-sdoc", "application/zip", ".reqifz", b"PK"),

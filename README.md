@@ -22,7 +22,6 @@ A Dockerized service providing a REST API interface to leverage StrictDoc's func
 - Support for multiple export formats:
   - HTML (default) - Web-based documentation
   - JSON - Structured data for programmatic access
-  - CSV - Spreadsheet compatible format
   - Excel - Native Microsoft Excel format
   - ReqIF/ReqIFZ - Requirements Interchange Format (XML/compressed)
   - RST - ReStructured Text for documentation
@@ -143,7 +142,7 @@ poetry run pre-commit run --all
 1. **Export Tests** (`tests/export/`)
    - Unit tests with mocked responses
    - Integration tests with real Docker container
-   - Comprehensive format testing (HTML, JSON, CSV, Excel, ReqIF, etc.)
+   - Comprehensive format testing (HTML, JSON, Excel, ReqIF, etc.)
 
 2. **Docker Tests**
    ```bash
@@ -159,7 +158,8 @@ poetry run pre-commit run --all
    ```bash
    # Run tox environments
    poetry run tox
-
+   ```
+   ```bash
    # Run specific test file
    poetry run pytest tests/export/test_unit.py -v
    ```
@@ -177,7 +177,7 @@ This script will:
 1. Build a test Docker image
 2. Start the StrictDoc service container
 3. Test the version endpoint
-4. Test all supported export formats (CSV, JSON, HTML, ReqIF, Excel, RST, SDOC, ReqIFZ)
+4. Test all supported export formats (JSON, HTML, ReqIF, Excel, RST, SDOC, ReqIFZ)
 5. Validate format-specific responses
 6. Test error handling scenarios
 7. Clean up all resources when complete
@@ -223,10 +223,10 @@ StrictDoc Service provides the following endpoints:
 
 ##### Parameters
 
-> | Parameter name | Type     | Data type | Description                                                                                |
-> |----------------|----------|-----------|--------------------------------------------------------------------------------------------|
-> | format         | optional | string    | Export format: html, html2pdf, rst, json, excel, reqif-sdoc, reqifz-sdoc, sdoc, doxygen, spdx, csv (default: html) |
-> | file_name      | optional | string    | Base name for the output file (default: exported-document)                                 |
+> | Parameter name | Type     | Data type | Description                                                                                                   |
+> |----------------|----------|-----------|---------------------------------------------------------------------------------------------------------------|
+> | format         | optional | string    | Export format: html, html2pdf, rst, json, excel, reqif-sdoc, reqifz-sdoc, sdoc, doxygen, spdx (default: html) |
+> | file_name      | optional | string    | Base name for the output file (default: exported-document)                                                    |
 
 ##### Responses
 
@@ -256,7 +256,7 @@ The test suite is organized as follows:
   - Common test data (sample SDOC content)
 
 - `test_unit.py`: Unit tests with mocked responses
-  - Export format tests (HTML, JSON, CSV, Excel, ReqIF, ReqIFZ, RST, SDOC)
+  - Export format tests (HTML, JSON, Excel, ReqIF, ReqIFZ, RST, SDOC)
   - PDF export tests
   - Error handling tests
   - Input validation tests
@@ -273,16 +273,20 @@ The test suite is organized as follows:
 ```bash
 # Run all tests
 poetry run pytest
-
+```
+```bash
 # Run only unit tests
 poetry run pytest tests/export/test_unit.py
-
+```
+```bash
 # Run only integration tests
 poetry run pytest tests/export/test_integration.py
-
+```
+```bash
 # Run with verbose output
 poetry run pytest -v
-
+```
+```bash
 # Run with coverage
 poetry run pytest --cov=app tests/
 ```
