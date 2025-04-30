@@ -549,8 +549,6 @@ async def export_document(
         raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail=f"Export failed: {e!s}")
 
 
-
-
 def start_server(port: int) -> None:
     """Start the FastAPI server."""
     uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")

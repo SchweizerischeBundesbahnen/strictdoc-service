@@ -1,5 +1,4 @@
-#!/bin/sh
-set -e
+#!/bin/bash
 
 # Use environment variables with defaults already set in Dockerfile
 BUILD_TIMESTAMP="$(cat /opt/strictdoc/.build_timestamp)"

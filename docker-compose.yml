@@ -21,6 +21,7 @@ services:
       args:
         APP_IMAGE_VERSION: ${APP_VERSION:-1.0.0}
     image: strictdoc-service:${APP_VERSION:-latest}
+    init: true  # Enable init process (equivalent to using tini)
     container_name: strictdoc_service
     restart: unless-stopped
 

@@ -9,7 +9,7 @@ repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v5.0.0
     hooks:
-#      - id: check-added-large-files
+      - id: check-added-large-files
       - id: check-case-conflict
       - id: check-merge-conflict
       - id: trailing-whitespace
@@ -65,6 +65,14 @@ repos:
     hooks:
       - id: commitizen
   - repo: https://github.com/hadolint/hadolint
-    rev: v2.12.0
+    rev: v2.13.1-beta
     hooks:
       - id: hadolint
+  - repo: https://github.com/woodruffw/zizmor-pre-commit
+    rev: v1.6.0
+    hooks:
+      - id: zizmor
+  - repo: https://github.com/rhysd/actionlint
+    rev: v1.7.7
+    hooks:
+      - id: actionlint
