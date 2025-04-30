@@ -1,0 +1,38 @@
+yamlfix..................................................................[42mPassed[m
+check for case conflicts.................................................[42mPassed[m
+check for merge conflicts................................................[42mPassed[m
+trim trailing whitespace.................................................[42mPassed[m
+check json...............................................................[42mPassed[m
+check toml...............................................................[42mPassed[m
+check yaml...............................................................[42mPassed[m
+don't commit to branch...................................................[42mPassed[m
+mixed line ending........................................................[42mPassed[m
+fix end of files.........................................................[42mPassed[m
+Sensitive data leak - URLs...............................................[42mPassed[m
+Sensitive data leak - UE numbers.........................................[42mPassed[m
+mypy.....................................................................[41mFailed[m
+[2m- hook id: mypy[m
+[2m- exit code: 1[m
+
+app/strictdoc_controller.py:38: [1m[31merror:(B[m Function is missing a return type annotation  (B[m[33m[no-untyped-def](B[m
+app/strictdoc_controller.py:38: [1m[31merror:(B[m Function is missing a type annotation for one or more arguments  (B[m[33m[no-untyped-def](B[m
+app/strictdoc_controller.py:53: [1m[31merror:(B[m Function is missing a return type annotation  (B[m[33m[no-untyped-def](B[m
+app/strictdoc_controller.py:93: [1m[31merror:(B[m (B[m[1m"staticmethod"(B[m used with a non-method  (B[m[33m[misc](B[m
+app/strictdoc_controller.py:94: [1m[31merror:(B[m Function is missing a type annotation  (B[m[33m[no-untyped-def](B[m
+app/strictdoc_controller.py:121: [1m[31merror:(B[m Function is missing a type annotation  (B[m[33m[no-untyped-def](B[m
+app/strictdoc_controller.py:407: [1m[31merror:(B[m No overload variant of (B[m[1m"__getitem__"(B[m of (B[m[1m"list"(B[m matches argument type (B[m[1m"str"(B[m  (B[m[33m[call-overload](B[m
+app/strictdoc_controller.py:407: [34mnote:(B[m Possible overload variants:(B[m
+app/strictdoc_controller.py:407: [34mnote:(B[m     def __getitem__(self, SupportsIndex, /) -> str(B[m
+app/strictdoc_controller.py:407: [34mnote:(B[m     def __getitem__(self, slice[Any, Any, Any], /) -> list[str](B[m
+app/strictdoc_controller.py:586: [1m[31merror:(B[m Function is missing a return type annotation  (B[m[33m[no-untyped-def](B[m
+app/strictdoc_controller.py:586: [34mnote:(B[m Use (B[m[1m"-> None"(B[m if function does not return a value(B[m
+app/strictdoc_controller.py:686: [1m[31merror:(B[m Function is missing a return type annotation  (B[m[33m[no-untyped-def](B[m
+app/strictdoc_controller.py:686: [34mnote:(B[m Use (B[m[1m"-> None"(B[m if function does not return a value(B[m
+[1m[31mFound 9 errors in 1 file (checked 3 source files)(B[m
+
+ruff-format..............................................................[42mPassed[m
+poetry-lock..............................................................[42mPassed[m
+poetry-check.............................................................[42mPassed[m
+Detect hardcoded secrets.................................................[42mPassed[m
+Check Git config user.email..............................................[42mPassed[m
+Lint Dockerfiles.........................................................[42mPassed[m

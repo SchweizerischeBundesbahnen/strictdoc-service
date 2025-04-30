@@ -1,0 +1,108 @@
+{
+    "_COMMENT": "Fields with _ are metadata. Fields without _ are the actual document/section/requirement/other content.",
+    "DOCUMENTS": [
+        {
+            "TITLE": "Test Document",
+            "REQ_PREFIX": null,
+            "GRAMMAR": {
+                "ELEMENTS": [
+                    {
+                        "NODE_TYPE": "TEXT",
+                        "FIELDS": [
+                            {
+                                "TITLE": "UID",
+                                "REQUIRED": false,
+                                "TYPE": "String"
+                            },
+                            {
+                                "TITLE": "STATEMENT",
+                                "REQUIRED": true,
+                                "TYPE": "String"
+                            }
+                        ],
+                        "RELATIONS": []
+                    },
+                    {
+                        "NODE_TYPE": "REQUIREMENT",
+                        "FIELDS": [
+                            {
+                                "TITLE": "UID",
+                                "REQUIRED": false,
+                                "TYPE": "String"
+                            },
+                            {
+                                "TITLE": "LEVEL",
+                                "REQUIRED": false,
+                                "TYPE": "String"
+                            },
+                            {
+                                "TITLE": "STATUS",
+                                "REQUIRED": false,
+                                "TYPE": "String"
+                            },
+                            {
+                                "TITLE": "TAGS",
+                                "REQUIRED": false,
+                                "TYPE": "String"
+                            },
+                            {
+                                "TITLE": "TITLE",
+                                "REQUIRED": false,
+                                "TYPE": "String"
+                            },
+                            {
+                                "TITLE": "STATEMENT",
+                                "REQUIRED": false,
+                                "TYPE": "String"
+                            },
+                            {
+                                "TITLE": "RATIONALE",
+                                "REQUIRED": false,
+                                "TYPE": "String"
+                            },
+                            {
+                                "TITLE": "COMMENT",
+                                "REQUIRED": false,
+                                "TYPE": "String"
+                            }
+                        ],
+                        "RELATIONS": [
+                            {
+                                "TYPE": "Parent"
+                            },
+                            {
+                                "TYPE": "File"
+                            }
+                        ]
+                    }
+                ]
+            },
+            "_OPTIONS": {},
+            "NODES": [
+                {
+                    "_TOC": "1",
+                    "TYPE": "SECTION",
+                    "TITLE": "Test Section",
+                    "NODES": [
+                        {
+                            "_TOC": "1.1",
+                            "TYPE": "REQUIREMENT",
+                            "UID": "REQ-001",
+                            "STATUS": "Draft",
+                            "TITLE": "First Requirement",
+                            "STATEMENT": "This is a test requirement\n"
+                        },
+                        {
+                            "_TOC": "1.2",
+                            "TYPE": "REQUIREMENT",
+                            "UID": "REQ-002",
+                            "STATUS": "Approved",
+                            "TITLE": "Second Requirement",
+                            "STATEMENT": "This is another test requirement\n"
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}

@@ -1,7 +1,7 @@
 [project]
-name = "open-source-polarion-docker-repo-template"
-version = "0.0.0"  # the version is controll by the pipeline
-description = ""
+name = "strictdoc-service"
+version = "0.0.0"  # the version is controlled by the pipeline
+description = "Service for StrictDoc requirements management and documentation tool"
 authors = [
     {name = "SBB Polarion Team", email = "polarion-opensource@sbb.ch"},
 ]
@@ -9,16 +9,14 @@ license = "Apache License 2.0"
 readme = "README.md"
 requires-python=">=3.13"
 dependencies = [
-    "flask (>=3.1.0,<4.0.0)",
-    "gevent (>=24.11.1,<25.0.0)",
+    "strictdoc==0.8.0",
+    "python-multipart==0.0.20",
+    "fastapi==0.115.12",
+    "uvicorn==0.34.2"
 ]
 
 [tool.poetry]
 packages = [{include = "app"}]
-requires-poetry = ">=2.0"
-
-[tool.poetry.dependencies]
-python = "^3.13"
 
 [tool.poetry.group.dev.dependencies]
 pre-commit = "4.2.0"
@@ -26,8 +24,20 @@ ruff = "0.11.7"
 mypy = "1.15.0"
 
 [tool.poetry.group.test.dependencies]
-tox = "^4.18.0"
-coverage = "^7.6.4"
+tox = "4.25.0"
+docker = "7.1.0"
+# for debug source code for pytest
+pytest = "8.3.5"
+pytest-cov = "6.1.1"
+pytest-mock = "3.14.0"
+pytest-asyncio = "0.26.0"
+pytest-timeout = "2.3.1"
+pytest-randomly = "3.16.0"
+pytest-xdist = "3.6.1"
+httpx = "0.28.1"
+requests = "2.32.3"
+Pillow = "11.2.1"
+zipfile36 = "0.1.3"
 
 [build-system]
 requires = ["poetry-core"]
@@ -35,31 +45,32 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.ruff]
 line-length = 240
-fix = true
-show-fixes = true
-
-[tool.ruff.lint]
-extend-select = [
-    # --- Recommended ---
-    "E", "W", # pycodestyle errors and warnings
-    "F",      # Pyflakes
-    "I",      # isort
-    "C4",     # flake8-comprehensions
-    "C90",    # mccabe
-    "B",      # flake8-bugbear
-    "UP",     # pyupgrade
-    "S",      # flake8-bandit
-    "PL",     # Pylint
-    "PTH",    # flake8-pathlib
-    "TCH",    # type-checking imports
-    "SIM",    # flake8-simplify
-    "T20",    # flake8-print
-    "ERA",    # eradicate
+target-version = "py313"
+select = ["ALL"]
+ignore = [
+    "COM812",   # Conflicts with the formatter
+    "ISC001",   # Conflicts with the formatter
+    "ANN101",   # Missing type annotation for self
+    "PLR0912",  # Too many branches
+    "PLR0915",  # Too many statements
+    "C901",     # Function is too complex
+    "PLR0913",  # Too many arguments
+    "PLR2004",  # Magic numbers
+    "B904",     # Within an except clause, raise exceptions with raise from
+    "S603",     # Subprocess call check
+    "S104",     # Possible binding to all interfaces
+    "PTH123"    # Use Path.open()
 ]
 
-[tool.ruff.lint.per-file-ignores]
-"tests/*" = [
-    "S101" # No assert rule (bandit)
+[tool.ruff.per-file-ignores]
+"tests/**" = [
+    "S101",     # Use of assert
+    "D103",     # Missing docstring in public function
+    "F821",     # Undefined name
+]
+"**/__init__.py" = [
+    "F401",     # Imported but unused
+    "F403",     # Wildcard imports
 ]
 
 [tool.ruff.format]
@@ -69,3 +80,15 @@ line-ending = "lf"
 explicit_package_bases = true
 disallow_untyped_defs = true
 exclude = "tests/.*"
+
+[tool.pytest]
+testpaths = ["tests"]
+python_files = "test_*.py"
+python_functions = "test_*"
+addopts = "-xvs --maxfail=1"
+
+[tool.pytest.ini_options]
+addopts = "-xvs --maxfail=1"
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+]
