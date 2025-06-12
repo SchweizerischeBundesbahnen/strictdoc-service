@@ -25,7 +25,7 @@ ruff = "0.11.13"
 mypy = "1.16.0"
 
 [tool.poetry.group.test.dependencies]
-tox = "4.25.0"
+tox = "4.26.0"
 docker = "7.1.0"
 # for debug source code for pytest
 pytest = "8.3.5"
