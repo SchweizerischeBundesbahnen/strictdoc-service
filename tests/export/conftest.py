@@ -77,6 +77,7 @@ def docker_setup() -> Generator[bool]:
 
     Yields:
         bool: True if setup was successful, False otherwise
+
     """
     client = None
     container_name = "strictdoc-service-test"
@@ -86,7 +87,7 @@ def docker_setup() -> Generator[bool]:
     try:
         client = docker.from_env()
     except DockerException as e:
-        raise RuntimeError(f"Failed to connect to Docker: {str(e)}")
+        raise RuntimeError(f"Failed to connect to Docker: {e!s}")
 
     try:
         # Always stop and remove existing container to get a fresh one
@@ -103,17 +104,15 @@ def docker_setup() -> Generator[bool]:
             container.remove(force=True)
     except DockerException as e:
         logger.exception("Error checking for existing container: %s", str(e))
-        raise RuntimeError(f"Error checking for existing container: {str(e)}")
+        raise RuntimeError(f"Error checking for existing container: {e!s}")
 
     # Build and start a new container
     try:
         # Check and remove temporary files that might cause build issues
-        import os
-        import tempfile
         from pathlib import Path
 
         # Clean up any previous test files in the project root
-        for temp_file in Path(".").glob("test-export*"):
+        for temp_file in Path().glob("test-export*"):
             if temp_file.is_file():
                 logger.info(f"Removing temporary file: {temp_file}")
                 temp_file.unlink()
@@ -165,7 +164,7 @@ def docker_setup() -> Generator[bool]:
             logger.error(error_msg)
             raise RuntimeError(error_msg)
     except DockerException as e:
-        error_msg = f"Failed to start docker container: {str(e)}"
+        error_msg = f"Failed to start docker container: {e!s}"
         logger.exception(error_msg)
         raise RuntimeError(error_msg)
 
@@ -196,6 +195,7 @@ def test_parameters(docker_setup: bool) -> Generator[TestParameters]:
 
     Yields:
         TestParameters: The setup test parameters
+
     """
     # Docker setup must be successful
     assert docker_setup, "Docker setup was not successful"

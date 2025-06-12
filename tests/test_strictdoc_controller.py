@@ -29,7 +29,7 @@ def test_version(monkeypatch: pytest.MonkeyPatch, client: TestClient) -> None:
     assert response.status_code == 200
     result = response.json()
     assert result["python"] == "3.13.1"
-    assert result["strictdoc"] == "0.7.0"
+    assert result["strictdoc"] == "0.8.0"
     assert result["strictdocService"] == "test1"
     assert result["timestamp"] == "test2"
 

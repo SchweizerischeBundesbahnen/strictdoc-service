@@ -5,9 +5,6 @@ import zipfile
 from http import HTTPStatus
 
 import pytest
-import requests
-from fastapi.testclient import TestClient
-from strictdoc.backend.sdoc.models.document import Document
 
 from tests.conftest import TestParameters
 

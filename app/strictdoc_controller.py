@@ -7,9 +7,8 @@ import tempfile
 from collections.abc import Awaitable, Callable
 from http import HTTPStatus
 from pathlib import Path
-from typing import Any, Annotated
+from typing import Any
 
-import aiofiles
 import uvicorn
 from fastapi import Body, FastAPI, HTTPException, Query
 from fastapi.exceptions import RequestValidationError
@@ -57,6 +56,7 @@ class FormatValidationMiddleware(BaseHTTPMiddleware):
 
         Returns:
             JSONResponse: The response from the next middleware or an error response
+
         """
         # Only intercept requests to the export endpoint
         if request.url.path == "/export" and request.method == "POST":
@@ -179,6 +179,7 @@ async def log_requests(request: Request, call_next: Callable[[Request], Awaitabl
 
     Returns:
         Response: The response from the next middleware
+
     """
     logger.info(
         "Request: %s %s",
@@ -242,6 +243,7 @@ def process_sdoc_content(content: str, input_file: Path) -> None:
 
     Raises:
         HTTPException: If the content is invalid
+
     """
     # Normalize line endings to Unix style
     content = content.replace("\r\n", "\n").replace("\r", "\n")
