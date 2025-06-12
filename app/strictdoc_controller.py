@@ -325,7 +325,7 @@ def process_sdoc_content(content: str, input_file: Path) -> None:
             # Extract the error location and message
             import re
 
-            match = re.search(r"([^:]+):(\d+):(\d+):(.*?)(?=\s*$)", error_msg)
+            match = re.match(r"^([^:]{1,256}):(\d{1,6}):(\d{1,6}):(.*)$", error_msg, re.DOTALL)
             if match:
                 file, line, col, message = match.groups()
                 error_msg = f"Syntax error in SDOC document at line {line}, column {col}: {message.strip()}"
