@@ -457,8 +457,13 @@ async def export_document(
     """
     logging.info(f"Export requested for format: '{format}', filename: '{file_name}'")
 
-    # Format is already validated by middleware, just make it lowercase
+    # Validate format against allowlist
     format = format.lower()
+    if format not in EXPORT_FORMATS:
+        raise HTTPException(
+            status_code=HTTPStatus.BAD_REQUEST,
+            detail=f"Invalid export format: {format}. Must be one of: {', '.join(EXPORT_FORMATS)}"
+        )
 
     # Sanitize filename to prevent path traversal
     sanitized_file_name = sanitize_filename(file_name)
