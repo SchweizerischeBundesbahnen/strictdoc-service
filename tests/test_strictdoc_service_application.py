@@ -133,7 +133,7 @@ def test_start_service(monkeypatch: pytest.MonkeyPatch) -> None:
         nonlocal server_started
         server_started = True
         assert port == DEFAULT_PORT
-        assert host == "0.0.0.0"
+        assert host in ("127.0.0.1", "localhost")
         assert log_level == "info"
 
     monkeypatch.setattr("uvicorn.run", mock_uvicorn_run)

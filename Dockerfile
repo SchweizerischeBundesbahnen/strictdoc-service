@@ -1,5 +1,5 @@
 # Builder stage
-FROM python:3.13-slim as builder
+FROM python:3.13-slim AS builder
 WORKDIR /app
 
 # Install build dependencies
@@ -18,10 +18,10 @@ RUN apt-get update && \
 
 # Copy only dependency files
 COPY pyproject.toml poetry.lock ./
-RUN poetry install --no-root --only main,test
+RUN poetry install --no-root --only main
 
 # Final stage
-FROM python:3.13-slim
+FROM python:3.13.3-slim@sha256:549df749715caa7da8649af1fbf5c0096838a0d69c544dc53c3b3864bfeda4e3
 LABEL maintainer="SBB Polarion Team <polarion-opensource@sbb.ch>" \
       org.opencontainers.image.title="StrictDoc Service" \
       org.opencontainers.image.description="API service for StrictDoc document processing" \
@@ -30,8 +30,10 @@ LABEL maintainer="SBB Polarion Team <polarion-opensource@sbb.ch>" \
 # hadolint ignore=DL3008
 RUN apt-get update && \
     apt-get upgrade -y && \
-    apt-get install --no-install-recommends -y curl \
-    && apt-get clean \
+    apt-get install --no-install-recommends --yes \
+    curl \
+    && apt-get clean autoclean \
+    && apt-get --yes autoremove \
     && rm -rf /var/lib/apt/lists/*
 
 ARG APP_IMAGE_VERSION=0.0.0

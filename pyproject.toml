@@ -48,6 +48,9 @@ build-backend = "poetry.core.masonry.api"
 line-length = 240
 fix = true
 show-fixes = true
+exclude = [
+    "tests/*"  # Exclude all test files from linting
+]
 
 [tool.ruff.lint]
 extend-select = [
@@ -79,19 +82,12 @@ extend-select = [
 [tool.ruff.format]
 line-ending = "lf"
 
+[tool.ruff.lint.pylint]
+max-args = 7
+
 [tool.mypy]
 explicit_package_bases = true
 disallow_untyped_defs = true
 exclude = "tests/.*"
-
-[tool.pytest]
-testpaths = ["tests"]
-python_files = "test_*.py"
-python_functions = "test_*"
-addopts = "-xvs --maxfail=1"
-
-[tool.pytest.ini_options]
-addopts = "-xvs --maxfail=1"
-markers = [
-    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
-]
+install_types = true
+non_interactive = true

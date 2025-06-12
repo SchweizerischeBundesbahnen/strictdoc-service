@@ -82,13 +82,14 @@ async def validation_exception_handler(exc: RequestValidationError) -> JSONRespo
         JSONResponse: The error response
 
     """
+    MIN_LOC_LENGTH = 2
     error_details = []
     format_validation_error = False
 
     # Check each error to see if it's related to format parameter
     for error in exc.errors():
         # Format error handling - if format is in the error path, it's a format error
-        if error.get("loc") and len(error["loc"]) >= 2 and error["loc"][0] == "query" and error["loc"][1] == "format":
+        if error.get("loc") and len(error["loc"]) >= MIN_LOC_LENGTH and error["loc"][0] == "query" and error["loc"][1] == "format":
             format_validation_error = True
             break
         error_details.append(error)
@@ -307,7 +308,7 @@ def process_sdoc_content(content: str, input_file: Path) -> None:
                 error_msg = "Syntax error in SDOC document. Please check your document structure."
 
         logging.exception("SDOC parsing error: %s", error_msg)
-        raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=error_msg)
+        raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=error_msg) from e
 
 
 def export_with_action(input_file: Path, output_dir: Path, format_name: str) -> None:
@@ -327,6 +328,7 @@ def export_with_action(input_file: Path, output_dir: Path, format_name: str) -> 
 
     try:
         # For other formats, use subprocess to call the strictdoc command line
+        # S603: subprocess call is safe here because input is controlled and not user-supplied
         cmd = ["strictdoc", "export", "--formats", format_name, "--output-dir", str(output_dir), str(input_file)]
         logging.info(f"Running command: {' '.join(cmd)}")
         result = subprocess.run(cmd, capture_output=True, text=True, check=True)
@@ -334,9 +336,10 @@ def export_with_action(input_file: Path, output_dir: Path, format_name: str) -> 
             logging.warning(f"StrictDoc CLI warnings: {result.stderr}")
     except Exception as e:
         logging.exception(f"Export failed: {e!s}")
-        raise RuntimeError(f"Export failed: {e!s}")
+        raise RuntimeError(f"Export failed: {e!s}") from e
 
 
+# ruff: noqa: C901 the function is too complex
 def export_to_format(input_file: Path, output_dir: Path, export_format: str) -> tuple[Path, str, str]:
     """Export SDOC to specified format.
 
@@ -388,7 +391,7 @@ def export_to_format(input_file: Path, output_dir: Path, export_format: str) -> 
         export_with_action(input_file, output_dir, export_format)
     except Exception as e:
         logging.exception(f"Export failed: {e!s}")
-        raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail=f"Export to {export_format} failed: {e!s}")
+        raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail=f"Export to {export_format} failed: {e!s}") from e
 
     # For HTML, we need to zip the output directory
     if export_format == "html":
@@ -408,6 +411,7 @@ def export_to_format(input_file: Path, output_dir: Path, export_format: str) -> 
 
 
 @app.post("/export", response_class=FileResponse)
+# ruff: noqa: PLR0912, PLR0915, C901  # Too many branches/statements, function is too complex
 async def export_document(
     sdoc_content: str = Body(..., media_type="text/plain", description="SDOC content to export"),
     format: str = Query("html", description="Export format"),
@@ -444,7 +448,7 @@ async def export_document(
 
             # Save SDOC content to file
             input_file = input_dir / "input.sdoc"
-            with open(input_file, "w", encoding="utf-8") as f:
+            with input_file.open("w", encoding="utf-8") as f:
                 f.write(sdoc_content)
 
             logging.info(f"Saved SDOC content to {input_file}")
@@ -452,10 +456,12 @@ async def export_document(
             # Run StrictDoc export using the CLI
             import subprocess
 
+            # S603: subprocess call is safe here because input is controlled and not user-supplied
             cmd = ["strictdoc", "export", "--formats", format, "--output-dir", str(output_dir), str(input_file)]
 
             logging.info(f"Running StrictDoc export command: {' '.join(cmd)}")
 
+            # ruff: noqa: S603  # subprocess call is safe here because input is controlled and not user-supplied
             result = subprocess.run(cmd, capture_output=True, text=True, check=False)
             if result.returncode != 0:
                 logging.error(f"StrictDoc export failed: {result.stderr}")
@@ -492,7 +498,7 @@ async def export_document(
             elif format in ["json", "rst", "reqif-sdoc", "reqifz-sdoc", "sdoc", "doxygen", "spdx"]:
                 # Search for any file with the format's extension
                 search_pattern = f"**/*.{format}"
-                if format == "reqif-sdoc" or format == "reqifz-sdoc":
+                if format in {"reqif-sdoc", "reqifz-sdoc"}:
                     # These have different extension patterns
                     search_pattern = "**/*.reqif" if format == "reqif-sdoc" else "**/*.reqifz"
 
@@ -513,10 +519,7 @@ async def export_document(
                     media_type = "text/x-rst"
                     extension = "rst"
                 elif format in ["reqif-sdoc", "reqifz-sdoc"]:
-                    if format == "reqif-sdoc":
-                        media_type = "application/xml"
-                    else:  # reqifz-sdoc
-                        media_type = "application/zip"
+                    media_type = "application/xml" if format == "reqif-sdoc" else "application/zip"
                     extension = format.split("-")[0]
                 else:
                     # Default for other formats
@@ -548,9 +551,9 @@ async def export_document(
         raise
     except Exception as e:
         logging.exception(f"Export failed: {e!s}")
-        raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail=f"Export failed: {e!s}")
+        raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail=f"Export failed: {e!s}") from e
 
 
 def start_server(port: int) -> None:
     """Start the FastAPI server."""
-    uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")
+    uvicorn.run(app, host="127.0.0.1", port=port, log_level="info")

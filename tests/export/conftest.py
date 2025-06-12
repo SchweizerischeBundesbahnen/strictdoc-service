@@ -87,7 +87,7 @@ def docker_setup() -> Generator[bool]:
     try:
         client = docker.from_env()
     except DockerException as e:
-        raise RuntimeError(f"Failed to connect to Docker: {e!s}")
+        raise RuntimeError(f"Failed to connect to Docker: {e!s}") from e
 
     try:
         # Always stop and remove existing container to get a fresh one
@@ -104,7 +104,7 @@ def docker_setup() -> Generator[bool]:
             container.remove(force=True)
     except DockerException as e:
         logger.exception("Error checking for existing container: %s", str(e))
-        raise RuntimeError(f"Error checking for existing container: {e!s}")
+        raise RuntimeError(f"Error checking for existing container: {e!s}") from e
 
     # Build and start a new container
     try:
@@ -130,7 +130,7 @@ def docker_setup() -> Generator[bool]:
             )
         except Exception as e:
             logger.error(f"Failed to build Docker image: {e}")
-            raise RuntimeError(f"Docker image build failed: {e}")
+            raise RuntimeError(f"Docker image build failed: {e}") from e
 
         # Start the container
         logger.info("Starting strictdoc-service container")
@@ -166,7 +166,7 @@ def docker_setup() -> Generator[bool]:
     except DockerException as e:
         error_msg = f"Failed to start docker container: {e!s}"
         logger.exception(error_msg)
-        raise RuntimeError(error_msg)
+        raise RuntimeError(error_msg) from e
 
     yield container_running
 
@@ -184,6 +184,7 @@ def docker_setup() -> Generator[bool]:
                 logger.warning(f"Failed to remove test image: {e}")
         except DockerException as e:
             logger.exception("Error during cleanup: %s", str(e))
+            raise
 
 
 @pytest.fixture(scope="session")
@@ -209,7 +210,7 @@ def test_parameters(docker_setup: bool) -> Generator[TestParameters]:
         response = session.get(f"{base_url}/version", timeout=5)
         assert response.status_code == HTTPStatus.OK, f"StrictDoc service not available (status code: {response.status_code})"
     except requests.RequestException as e:
-        raise RuntimeError(f"StrictDoc service not accessible: {e}")
+        raise RuntimeError(f"StrictDoc service not accessible: {e}") from e
 
     test_params = TestParameters(base_url=base_url, request_session=session)
 

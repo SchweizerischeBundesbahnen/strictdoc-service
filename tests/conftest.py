@@ -59,6 +59,7 @@ def docker_setup() -> Generator[bool]:
                 container.remove(force=True)
     except DockerException as e:
         logger.exception("Error checking for existing container: %s", str(e))
+        raise
 
     # Build and start the container if it's not already running
     if not container_running:
@@ -116,6 +117,7 @@ def docker_setup() -> Generator[bool]:
             client.images.remove("strictdoc-service:test", force=True)
         except DockerException as e:
             logger.exception("Error during cleanup: %s", str(e))
+            raise
 
 
 @pytest.fixture(scope="session")

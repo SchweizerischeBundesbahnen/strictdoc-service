@@ -32,7 +32,6 @@ def test_version(monkeypatch: pytest.MonkeyPatch, client: TestClient) -> None:
     assert result["strictdoc"] == "0.8.0"
     assert "strictdoc_service" in result
     assert isinstance(result["strictdoc_service"], str)
-    # assert result["timestamp"] == "test2"  # Not set by implementation
 
 
 # Note: Export-related tests have been moved to these files:
