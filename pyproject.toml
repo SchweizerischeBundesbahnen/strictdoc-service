@@ -21,8 +21,8 @@ packages = [{include = "app"}]
 
 [tool.poetry.group.dev.dependencies]
 pre-commit = "4.2.0"
-ruff = "0.11.7"
-mypy = "1.15.0"
+ruff = "0.11.13"
+mypy = "1.16.0"
 
 [tool.poetry.group.test.dependencies]
 tox = "4.25.0"
