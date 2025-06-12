@@ -2,6 +2,7 @@
 
 import logging
 import os
+import re
 import shutil
 import tempfile
 from collections.abc import Awaitable, Callable
@@ -169,6 +170,29 @@ class ErrorResponse(BaseModel):
     details: str | None = None
 
 
+# Function to sanitize file names
+def sanitize_filename(filename: str) -> str:
+    """Sanitize a filename to prevent path traversal attacks.
+
+    Args:
+        filename: The filename to sanitize
+
+    Returns:
+        str: The sanitized filename
+    """
+    # Remove any path components, only keep the base filename
+    sanitized = os.path.basename(filename)
+
+    # Additional sanitization - keep only alphanumeric chars, underscore, hyphen, and dot
+    sanitized = re.sub(r"[^\w.-]", "_", sanitized)
+
+    # Ensure the filename is not empty or starts with a dot
+    if not sanitized or sanitized.startswith("."):
+        sanitized = "document" + sanitized
+
+    return sanitized
+
+
 # Middleware for logging
 @app.middleware("http")
 async def log_requests(request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
@@ -253,7 +277,7 @@ def process_sdoc_content(content: str, input_file: Path) -> None:
     if "[DOCUMENT]" not in content:
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail="Missing [DOCUMENT] section in SDOC content")
 
-    # Write content to file
+    # Write content to file - input_file is created within the controlled temp directory
     with input_file.open("w", encoding="utf-8") as f:
         f.write(content)
 
@@ -261,12 +285,13 @@ def process_sdoc_content(content: str, input_file: Path) -> None:
     try:
         reader = SDReader()
         # Create environment and config with explicit paths
-        environment = SDocRuntimeEnvironment(str(input_file.parent))
+        input_parent = str(input_file.parent)
+        environment = SDocRuntimeEnvironment(input_parent)
         project_config = ProjectConfig(
             environment=environment,
             project_title=ProjectConfig.DEFAULT_PROJECT_TITLE,
-            dir_for_sdoc_assets=str(input_file.parent),
-            dir_for_sdoc_cache=str(input_file.parent / "cache"),
+            dir_for_sdoc_assets=input_parent,
+            dir_for_sdoc_cache=str(Path(input_parent) / "cache"),
             project_features=ProjectConfig.DEFAULT_FEATURES,
             server_host=ProjectConfig.DEFAULT_SERVER_HOST,
             server_port=ProjectConfig.DEFAULT_SERVER_PORT,
@@ -289,7 +314,7 @@ def process_sdoc_content(content: str, input_file: Path) -> None:
 
         # Monkey patch the config to avoid TypeError in pickle_cache.py
         # PickleCache uses project_config.output_dir + full_path_to_file
-        project_config.output_dir = str(input_file.parent) + "/"
+        project_config.output_dir = input_parent + "/"
 
         reader.read_from_file(input_file, project_config)
     except Exception as e:
@@ -395,8 +420,10 @@ def export_to_format(input_file: Path, output_dir: Path, export_format: str) -> 
 
     # For HTML, we need to zip the output directory
     if export_format == "html":
-        output_zip = input_file.parent / "output.zip"
-        shutil.make_archive(str(output_zip).replace(".zip", ""), "zip", output_dir)
+        # Use a secure path for the zip output
+        zip_base_name = os.path.join(str(input_file.parent), "output")
+        output_zip = Path(f"{zip_base_name}.zip")
+        shutil.make_archive(zip_base_name, "zip", output_dir)
         return output_zip, extension, mime_type
 
     # Find the exported file
@@ -432,6 +459,12 @@ async def export_document(
 
     # Format is already validated by middleware, just make it lowercase
     format = format.lower()
+
+    # Sanitize filename to prevent path traversal
+    sanitized_file_name = sanitize_filename(file_name)
+    if sanitized_file_name != file_name:
+        logging.warning(f"Sanitized filename from '{file_name}' to '{sanitized_file_name}'")
+        file_name = sanitized_file_name
 
     # Basic validation of SDOC content
     if not sdoc_content or "[DOCUMENT]" not in sdoc_content:
@@ -529,8 +562,12 @@ async def export_document(
             if not export_file:
                 raise RuntimeError(f"No {format} file found in output after export")
 
-            # Copy to a persistent location
-            persistent_temp_file = Path(tempfile.gettempdir()) / f"{file_name}.{extension}"
+            # Create a secure path for the temporary file in a controlled directory
+            temp_dir_obj = tempfile.gettempdir()
+            secure_filename = f"{sanitized_file_name}.{extension}"
+            persistent_temp_file = Path(temp_dir_obj) / secure_filename
+
+            # Copy the file
             shutil.copy2(export_file, persistent_temp_file)
 
             logging.info(f"Exported {format} file to {persistent_temp_file}")
@@ -544,7 +581,7 @@ async def export_document(
                     logging.exception(f"Failed to clean up temporary file: {e!s}")
 
             # Return the exported file
-            return FileResponse(path=persistent_temp_file, media_type=media_type, filename=f"{file_name}.{extension}", background=BackgroundTask(cleanup_temp_file))
+            return FileResponse(path=persistent_temp_file, media_type=media_type, filename=secure_filename, background=BackgroundTask(cleanup_temp_file))
 
     except HTTPException:
         # Re-raise HTTP exceptions
