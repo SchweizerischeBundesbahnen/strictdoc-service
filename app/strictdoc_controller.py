@@ -455,7 +455,9 @@ async def export_document(
         FileResponse: The exported file
 
     """
-    logging.info(f"Export requested for format: '{format}', filename: '{file_name}'")
+    sanitized_format = format.replace('\n', '').replace('\r', '')
+    sanitized_file_name = file_name.replace('\n', '').replace('\r', '')
+    logging.info(f"Export requested for format: '{sanitized_format}', filename: '{sanitized_file_name}'")
 
     # Validate format against allowlist
     format = format.lower()
