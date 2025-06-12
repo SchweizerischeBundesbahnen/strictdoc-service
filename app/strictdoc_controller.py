@@ -181,7 +181,7 @@ def sanitize_filename(filename: str) -> str:
         str: The sanitized filename
     """
     # Remove any path components, only keep the base filename
-    sanitized = os.path.basename(filename)
+    sanitized = Path(filename).name
 
     # Additional sanitization - keep only alphanumeric chars, underscore, hyphen, and dot
     sanitized = re.sub(r"[^\w.-]", "_", sanitized)
@@ -421,9 +421,9 @@ def export_to_format(input_file: Path, output_dir: Path, export_format: str) -> 
     # For HTML, we need to zip the output directory
     if export_format == "html":
         # Use a secure path for the zip output
-        zip_base_name = os.path.join(str(input_file.parent), "output")
+        zip_base_name = input_file.parent / "output"
         output_zip = Path(f"{zip_base_name}.zip")
-        shutil.make_archive(zip_base_name, "zip", output_dir)
+        shutil.make_archive(str(zip_base_name), "zip", output_dir)
         return output_zip, extension, mime_type
 
     # Find the exported file
