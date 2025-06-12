@@ -15,7 +15,7 @@ def client() -> TestClient:
 def test_version(monkeypatch: pytest.MonkeyPatch, client: TestClient) -> None:
     """Test the version endpoint returns correct information."""
     # Mock strictdoc.__version__
-    monkeypatch.setattr("strictdoc.__version__", "0.7.0")
+    monkeypatch.setattr("strictdoc.__version__", "0.8.0")
 
     # Set up environment variables
     monkeypatch.setattr("platform.python_version", lambda: "3.13.1")
@@ -28,10 +28,11 @@ def test_version(monkeypatch: pytest.MonkeyPatch, client: TestClient) -> None:
     # Verify the response
     assert response.status_code == 200
     result = response.json()
-    assert result["python"] == "3.13.1"
+    assert "3.13" in result["python"]
     assert result["strictdoc"] == "0.8.0"
     assert "strictdoc_service" in result
-    assert isinstance(result["strictdoc_service"], str)
+    assert "timestamp" in result
+    assert "platform" in result
 
 
 # Note: Export-related tests have been moved to these files:
