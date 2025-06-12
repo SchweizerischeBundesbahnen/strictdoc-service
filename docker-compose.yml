@@ -1,0 +1,95 @@
+---
+version: '3.8'
+
+# Shared configuration snippets
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: 10m
+    max-file: '5'
+x-healthcheck: &default-healthcheck
+  test: [CMD, curl, -f, http://localhost:9083/version]
+  interval: 30s
+  timeout: 10s
+  retries: 3
+  start_period: 5s
+services:
+  strictdoc:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        APP_IMAGE_VERSION: ${APP_VERSION:-1.0.0}
+    image: strictdoc-service:${APP_VERSION:-latest}
+    init: true  # Enable init process (equivalent to using tini)
+    container_name: strictdoc_service
+    restart: unless-stopped
+
+    # Security settings
+    read_only: true
+    security_opt: [no-new-privileges:true]
+    cap_drop:
+      - ALL
+
+    # Network settings
+    ports:
+      - 9083:9083
+
+    # Environment configuration
+    environment:
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - PORT=9083
+      - PYTHONUNBUFFERED=1
+
+    # Health checking
+    healthcheck: *default-healthcheck
+    logging: *default-logging
+    # Volume configuration
+    volumes:
+      - type: tmpfs
+        target: /tmp
+      - type: tmpfs
+        target: /tmp/strictdoc
+
+    # Network configuration
+    networks:
+      - strictdoc-network
+
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 256M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+
+  # Optional service for reverse proxy
+  # Uncomment if needed
+  # nginx:
+  #   image: nginx:alpine
+  #   ports:
+  #     - "80:80"
+  #     - "443:443"
+  #   volumes:
+  #     - ./nginx/conf.d:/etc/nginx/conf.d:ro
+  #     - ./nginx/ssl:/etc/nginx/ssl:ro
+  #   networks:
+  #     - strictdoc-network
+  #   depends_on:
+  #     - strictdoc
+  #   healthcheck:
+  #     test: ["CMD", "curl", "-f", "http://localhost/health"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 3
+  #   logging: *default-logging
+  #   restart: unless-stopped
+networks:
+  strictdoc-network:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.28.0.0/16
