@@ -11,11 +11,11 @@
 
 # StrictDoc Service
 
-A Dockerized service providing a REST API interface to leverage StrictDoc's functionality for documentation and requirements management.
+A Dockerized service providing a REST API interface to leverage [StrictDoc](https://github.com/strictdoc-project/strictdoc)'s functionality for documentation and requirements management.
 
 ## Features
 
-- Simple REST API to access StrictDoc
+- Simple REST API to access [StrictDoc](https://github.com/strictdoc-project/strictdoc)
 - Compatible with amd64 and arm64 architectures
 - Easily deployable via Docker or Docker Compose
 - Configurable port and logging level
