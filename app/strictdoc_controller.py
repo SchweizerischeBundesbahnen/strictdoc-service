@@ -468,7 +468,7 @@ async def export_document(
     sanitized_file_name = sanitize_filename(file_name)
     if sanitized_file_name != file_name:
         sanitized_log_file_name = re.sub(r"[\n\r]", "_", file_name)
-        logging.warning(f"Sanitized filename from '[USER INPUT: {sanitized_log_file_name}]' to '{sanitized_file_name}'")
+        logging.warning(f"Sanitized filename from '[USER INPUT: {sanitized_log_file_name!r}]' to '{sanitized_file_name}'")
         file_name = sanitized_file_name
 
     # Basic validation of SDOC content
