@@ -263,7 +263,7 @@ def process_sdoc_content(content: str, input_file: Path) -> None:
     """Process and validate SDOC content.
 
     Args:
-        sdoc_content: The SDOC content to validate
+        content: The SDOC content to validate
         input_file: Path to the input file
 
     Raises:
@@ -316,7 +316,7 @@ def process_sdoc_content(content: str, input_file: Path) -> None:
         # PickleCache uses project_config.output_dir + full_path_to_file
         project_config.output_dir = input_parent + "/"
 
-        reader.read_from_file(input_file, project_config)
+        reader.read_from_file(str(input_file), project_config)
     except Exception as e:
         # Clean up and raise a more user-friendly error
         error_msg = str(e)
@@ -327,7 +327,7 @@ def process_sdoc_content(content: str, input_file: Path) -> None:
 
             match = re.match(r"^([^:]{1,256}):(\d{1,6}):(\d{1,6}):(.*)$", error_msg, re.DOTALL)
             if match:
-                file, line, col, message = match.groups()
+                _, line, col, message = match.groups()
                 error_msg = f"Syntax error in SDOC document at line {line}, column {col}: {message.strip()}"
             else:
                 error_msg = "Syntax error in SDOC document. Please check your document structure."
