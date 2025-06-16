@@ -1,0 +1,1 @@
+"""StrictDoc service application package."""
