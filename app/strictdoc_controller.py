@@ -441,35 +441,34 @@ def export_to_format(input_file: Path, output_dir: Path, export_format: str) -> 
 # ruff: noqa: PLR0912, PLR0915, C901  # Too many branches/statements, function is too complex
 async def export_document(
     sdoc_content: str = Body(..., media_type="text/plain", description="SDOC content to export"),
-    format: str = Query("html", description="Export format"),
+    export_format: str = Query("html", description="Export format"),
     file_name: str = Query("exported-document", description="Name for the exported file"),
 ) -> FileResponse:
     """Export StrictDoc document to various formats.
 
     Args:
         sdoc_content: The SDOC content to export
-        format: The export format
+        export_format: The export format
         file_name: The name for the exported file
 
     Returns:
         FileResponse: The exported file
 
     """
-    sanitized_format = format.replace("\n", "").replace("\r", "")
+    # Sanitize user input for logging
+    sanitized_format = export_format.replace("\n", "").replace("\r", "")
     sanitized_file_name = file_name.replace("\n", "").replace("\r", "")
-    logging.info(f"Export requested for format: '{sanitized_format}', filename: '{sanitized_file_name}'")
+    logging.info("Export requested for format: %r, filename: %r", sanitized_format, sanitized_file_name)
 
     # Validate format against allowlist
-    format = format.lower()
-    if format not in EXPORT_FORMATS:
-        raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=f"Invalid export format: {format}. Must be one of: {', '.join(EXPORT_FORMATS)}")
+    export_format = export_format.lower()
+    if export_format not in EXPORT_FORMATS:
+        raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=f"Invalid export format: {export_format}. Must be one of: {', '.join(EXPORT_FORMATS)}")
 
     # Sanitize filename to prevent path traversal
     sanitized_file_name = sanitize_filename(file_name)
     if sanitized_file_name != file_name:
-        sanitized_log_file_name = re.sub(r"[\n\r]", "_", file_name)
-        sanitized_log_file_name = sanitized_log_file_name.replace("\n", "").replace("\r", "")
-        logging.warning(f"Sanitized filename from '[USER INPUT: {sanitized_log_file_name!r}]' to '{sanitized_file_name}'")
+        logging.warning("Sanitized filename from %r to %r", file_name, sanitized_file_name)
         file_name = sanitized_file_name
 
     # Basic validation of SDOC content
@@ -496,7 +495,7 @@ async def export_document(
             import subprocess
 
             # S603: subprocess call is safe here because input is controlled and not user-supplied
-            cmd = ["strictdoc", "export", "--formats", format, "--output-dir", str(output_dir), str(input_file)]
+            cmd = ["strictdoc", "export", "--formats", export_format, "--output-dir", str(output_dir), str(input_file)]
 
             logging.info(f"Running StrictDoc export command: {' '.join(cmd)}")
 
@@ -524,17 +523,17 @@ async def export_document(
             }
 
             # Derive the extension from the validated format
-            extension = EXPORT_FORMAT_EXTENSIONS.get(format)
+            extension = EXPORT_FORMAT_EXTENSIONS.get(export_format)
             if not extension:
-                raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=f"Invalid export format: {format}. Must be one of: {', '.join(EXPORT_FORMAT_EXTENSIONS.keys())}")
+                raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=f"Invalid export format: {export_format}. Must be one of: {', '.join(EXPORT_FORMAT_EXTENSIONS.keys())}")
 
-            if format == "html":
+            if export_format == "html":
                 # For HTML, create a zip of the output directory
                 output_zip = temp_dir_path / "output.zip"
                 shutil.make_archive(str(output_zip).replace(".zip", ""), "zip", output_dir)
                 export_file = output_zip
                 media_type = "application/zip"
-            elif format == "html2pdf":
+            elif export_format == "html2pdf":
                 # PDF files can be in output directory
                 pdf_files = list(output_dir.glob("**/*.pdf"))
                 if not pdf_files:
@@ -542,7 +541,7 @@ async def export_document(
                 export_file = pdf_files[0]
                 media_type = "application/pdf"
                 extension = "pdf"
-            elif format == "excel":
+            elif export_format == "excel":
                 # Excel files have .xlsx extension
                 excel_files = list(output_dir.glob("**/*.xlsx"))
                 if not excel_files:
@@ -550,39 +549,39 @@ async def export_document(
                 export_file = excel_files[0]
                 media_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                 extension = "xlsx"
-            elif format in ["json", "rst", "reqif-sdoc", "reqifz-sdoc", "sdoc", "doxygen", "spdx"]:
+            elif export_format in ["json", "rst", "reqif-sdoc", "reqifz-sdoc", "sdoc", "doxygen", "spdx"]:
                 # Search for any file with the format's extension
-                search_pattern = f"**/*.{format}"
-                if format in {"reqif-sdoc", "reqifz-sdoc"}:
+                search_pattern = f"**/*.{export_format}"
+                if export_format in {"reqif-sdoc", "reqifz-sdoc"}:
                     # These have different extension patterns
-                    search_pattern = "**/*.reqif" if format == "reqif-sdoc" else "**/*.reqifz"
+                    search_pattern = "**/*.reqif" if export_format == "reqif-sdoc" else "**/*.reqifz"
 
                 found_files = list(output_dir.glob(search_pattern))
                 if not found_files:
                     # Try with just the extension
-                    found_files = list(output_dir.glob(f"**/*.{format.split('-')[0]}"))
+                    found_files = list(output_dir.glob(f"**/*.{export_format.split('-')[0]}"))
 
                 if not found_files:
-                    raise RuntimeError(f"No {format} file found in output after export")
+                    raise RuntimeError(f"No {export_format} file found in output after export")
 
                 export_file = found_files[0]
 
                 # Set media type based on format
-                if format == "json":
+                if export_format == "json":
                     media_type = "application/json"
-                elif format == "rst":
+                elif export_format == "rst":
                     media_type = "text/x-rst"
                     extension = "rst"
-                elif format in ["reqif-sdoc", "reqifz-sdoc"]:
-                    media_type = "application/xml" if format == "reqif-sdoc" else "application/zip"
-                    extension = format.split("-")[0]
+                elif export_format in ["reqif-sdoc", "reqifz-sdoc"]:
+                    media_type = "application/xml" if export_format == "reqif-sdoc" else "application/zip"
+                    extension = export_format.split("-")[0]
                 else:
                     # Default for other formats
                     media_type = "text/plain"
-                    extension = format
+                    extension = export_format
 
             if not export_file:
-                raise RuntimeError(f"No {format} file found in output after export")
+                raise RuntimeError(f"No {export_format} file found in output after export")
 
             # Create a secure path for the temporary file in a controlled directory
             temp_dir_obj = tempfile.gettempdir()
@@ -598,7 +597,7 @@ async def export_document(
             # Copy the file
             shutil.copy2(export_file, persistent_temp_file)
 
-            sanitized_format = format.replace("\n", "").replace("\r", "")
+            sanitized_format = export_format.replace("\n", "").replace("\r", "")
             sanitized_persistent_temp_file = str(persistent_temp_file).replace("\n", "").replace("\r", "")
             logging.info(f"Exported {sanitized_format} file to {sanitized_persistent_temp_file}")
 
