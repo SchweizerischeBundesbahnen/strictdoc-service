@@ -610,7 +610,7 @@ async def export_document(
                     logging.exception(f"Failed to clean up temporary file: {e!s}")
 
             # Return the exported file
-            return FileResponse(path=persistent_temp_file, media_type=media_type, filename=secure_filename, background=BackgroundTask(cleanup_temp_file))
+            return FileResponse(path=str(persistent_temp_file), media_type=media_type, filename=secure_filename, background=BackgroundTask(cleanup_temp_file))
 
     except HTTPException:
         # Re-raise HTTP exceptions
