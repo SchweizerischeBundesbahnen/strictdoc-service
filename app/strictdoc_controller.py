@@ -590,7 +590,7 @@ async def export_document(
 
             # Normalize and validate the path
             persistent_temp_file = persistent_temp_file.resolve()
-            if not str(persistent_temp_file).startswith(temp_dir_obj):
+            if os.path.commonpath([temp_dir_obj, str(persistent_temp_file)]) != temp_dir_obj:
                 raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail="Invalid file path detected.")
 
             # Copy the file
