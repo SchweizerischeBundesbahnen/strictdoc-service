@@ -9,7 +9,7 @@ license = "Apache License 2.0"
 readme = "README.md"
 requires-python=">=3.13"
 dependencies = [
-    "strictdoc==0.8.0",
+    "strictdoc==0.9.1",
     "python-multipart==0.0.20",
     "fastapi==0.115.12",
     "uvicorn==0.34.3",
