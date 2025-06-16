@@ -29,7 +29,7 @@ tox = "4.26.0"
 docker = "7.1.0"
 # for debug source code for pytest
 pytest = "8.4.0"
-pytest-cov = "6.1.1"
+pytest-cov = "6.2.1"
 pytest-mock = "3.14.1"
 pytest-asyncio = "1.0.0"
 pytest-timeout = "2.3.1"
