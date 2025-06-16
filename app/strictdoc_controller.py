@@ -586,7 +586,8 @@ async def export_document(
             # Copy the file
             shutil.copy2(export_file, persistent_temp_file)
 
-            logging.info(f"Exported {format} file to {persistent_temp_file}")
+            sanitized_format = format.replace('\n', '').replace('\r', '')
+            logging.info(f"Exported {sanitized_format} file to {persistent_temp_file}")
 
             # Create cleanup function
             def cleanup_temp_file() -> None:
