@@ -455,22 +455,19 @@ async def export_document(
         FileResponse: The exported file
 
     """
-    sanitized_format = format.replace('\n', '').replace('\r', '')
-    sanitized_file_name = file_name.replace('\n', '').replace('\r', '')
+    sanitized_format = format.replace("\n", "").replace("\r", "")
+    sanitized_file_name = file_name.replace("\n", "").replace("\r", "")
     logging.info(f"Export requested for format: '{sanitized_format}', filename: '{sanitized_file_name}'")
 
     # Validate format against allowlist
     format = format.lower()
     if format not in EXPORT_FORMATS:
-        raise HTTPException(
-            status_code=HTTPStatus.BAD_REQUEST,
-            detail=f"Invalid export format: {format}. Must be one of: {', '.join(EXPORT_FORMATS)}"
-        )
+        raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=f"Invalid export format: {format}. Must be one of: {', '.join(EXPORT_FORMATS)}")
 
     # Sanitize filename to prevent path traversal
     sanitized_file_name = sanitize_filename(file_name)
     if sanitized_file_name != file_name:
-        sanitized_log_file_name = file_name.replace('\n', '').replace('\r', '')
+        sanitized_log_file_name = file_name.replace("\n", "").replace("\r", "")
         logging.warning(f"Sanitized filename from '{sanitized_log_file_name}' to '{sanitized_file_name}'")
         file_name = sanitized_file_name
 
@@ -522,15 +519,13 @@ async def export_document(
                 "sdoc": "sdoc",
                 "doxygen": "xml",
                 "spdx": "spdx",
+                "excel": "xlsx",  # Add excel format to the extensions dictionary
             }
 
             # Derive the extension from the validated format
             extension = EXPORT_FORMAT_EXTENSIONS.get(format)
             if not extension:
-                raise HTTPException(
-                    status_code=HTTPStatus.BAD_REQUEST,
-                    detail=f"Invalid export format: {format}. Must be one of: {', '.join(EXPORT_FORMAT_EXTENSIONS.keys())}"
-                )
+                raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=f"Invalid export format: {format}. Must be one of: {', '.join(EXPORT_FORMAT_EXTENSIONS.keys())}")
 
             if format == "html":
                 # For HTML, create a zip of the output directory
@@ -596,15 +591,12 @@ async def export_document(
             # Normalize and validate the path
             persistent_temp_file = persistent_temp_file.resolve()
             if not str(persistent_temp_file).startswith(temp_dir_obj):
-                raise HTTPException(
-                    status_code=HTTPStatus.BAD_REQUEST,
-                    detail="Invalid file path detected."
-                )
+                raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail="Invalid file path detected.")
 
             # Copy the file
             shutil.copy2(export_file, persistent_temp_file)
 
-            sanitized_format = format.replace('\n', '').replace('\r', '')
+            sanitized_format = format.replace("\n", "").replace("\r", "")
             logging.info(f"Exported {sanitized_format} file to {persistent_temp_file}")
 
             # Create cleanup function
