@@ -355,12 +355,12 @@ def export_with_action(input_file: Path, output_dir: Path, format_name: str) -> 
         # For other formats, use subprocess to call the strictdoc command line
         # S603: subprocess call is safe here because input is controlled and not user-supplied
         cmd = ["strictdoc", "export", "--formats", format_name, "--output-dir", str(output_dir), str(input_file)]
-        logging.info(f"Running command: {' '.join(cmd)}")
+        logging.info("Running command: %s", " ".join(cmd))
         result = subprocess.run(cmd, capture_output=True, text=True, check=True)
         if result.stderr:
-            logging.warning(f"StrictDoc CLI warnings: {result.stderr}")
+            logging.warning("StrictDoc CLI warnings: %s", result.stderr)
     except Exception as e:
-        logging.exception(f"Export failed: {e!s}")
+        logging.exception("Export failed: %s", str(e))
         raise RuntimeError(f"Export failed: {e!s}") from e
 
 
@@ -415,7 +415,7 @@ def export_to_format(input_file: Path, output_dir: Path, export_format: str) -> 
         # Call export_with_action for the actual export
         export_with_action(input_file, output_dir, export_format)
     except Exception as e:
-        logging.exception(f"Export failed: {e!s}")
+        logging.exception("Export failed: %s", str(e))
         raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail=f"Export to {export_format} failed: {e!s}") from e
 
     # For HTML, we need to zip the output directory
@@ -433,7 +433,7 @@ def export_to_format(input_file: Path, output_dir: Path, export_format: str) -> 
     if not exported_files:
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=f"No {extension} file found in output after export")
 
-    logging.info(f"Found exported file: {exported_files[0]}")
+    logging.info("Found exported file: %s", exported_files[0])
     return exported_files[0], extension, mime_type
 
 
@@ -489,7 +489,7 @@ async def export_document(
             with input_file.open("w", encoding="utf-8") as f:
                 f.write(sdoc_content)
 
-            logging.info(f"Saved SDOC content to {input_file}")
+            logging.info("Saved SDOC content to %s", input_file)
 
             # Run StrictDoc export using the CLI
             import subprocess
@@ -497,12 +497,12 @@ async def export_document(
             # S603: subprocess call is safe here because input is controlled and not user-supplied
             cmd = ["strictdoc", "export", "--formats", export_format, "--output-dir", str(output_dir), str(input_file)]
 
-            logging.info(f"Running StrictDoc export command: {' '.join(cmd)}")
+            logging.info("Running StrictDoc export command: %s", " ".join(cmd))
 
             # ruff: noqa: S603  # subprocess call is safe here because input is controlled and not user-supplied
             result = subprocess.run(cmd, capture_output=True, text=True, check=False)
             if result.returncode != 0:
-                logging.error(f"StrictDoc export failed: {result.stderr}")
+                logging.error("StrictDoc export failed: %s", result.stderr)
                 raise RuntimeError(f"StrictDoc export failed: {result.stderr}")
 
             # Determine the exported file path based on format
@@ -599,7 +599,7 @@ async def export_document(
 
             sanitized_format = export_format.replace("\n", "").replace("\r", "")
             sanitized_persistent_temp_file = str(persistent_temp_file).replace("\n", "").replace("\r", "")
-            logging.info(f"Exported {sanitized_format} file to {sanitized_persistent_temp_file}")
+            logging.info("Exported %s file to %s", sanitized_format, sanitized_persistent_temp_file)
 
             # Create cleanup function
             def cleanup_temp_file() -> None:
@@ -607,7 +607,7 @@ async def export_document(
                     if persistent_temp_file.exists():
                         persistent_temp_file.unlink()
                 except Exception as e:
-                    logging.exception(f"Failed to clean up temporary file: {e!s}")
+                    logging.exception("Failed to clean up temporary file: %s", str(e))
 
             # Return the exported file
             return FileResponse(path=str(persistent_temp_file), media_type=media_type, filename=secure_filename, background=BackgroundTask(cleanup_temp_file))
