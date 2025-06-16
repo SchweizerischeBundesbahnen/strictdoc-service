@@ -467,7 +467,7 @@ async def export_document(
     # Sanitize filename to prevent path traversal
     sanitized_file_name = sanitize_filename(file_name)
     if sanitized_file_name != file_name:
-        sanitized_log_file_name = file_name.replace("\n", "").replace("\r", "")
+        sanitized_log_file_name = re.sub(r"[\n\r]", "_", file_name)
         logging.warning(f"Sanitized filename from '[USER INPUT: {sanitized_log_file_name}]' to '{sanitized_file_name}'")
         file_name = sanitized_file_name
 
