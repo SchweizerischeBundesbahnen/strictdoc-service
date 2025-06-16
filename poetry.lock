@@ -621,14 +621,14 @@ files = [
 ]
 
 [[package]]
-name = "html2print"
-version = "0.0.17"
-description = "Python client for HTML2PDF JavaScript library."
+name = "html2pdf4doc"
+version = "0.0.18"
+description = "Python client for HTML2PDF4Doc JavaScript library."
 optional = false
 python-versions = ">=3.8"
 groups = ["main"]
 files = [
-    {file = "html2print-0.0.17.tar.gz", hash = "sha256:2b5820222413d4afc9e66e80ee1b410d2210063c3ac7bf0bc2e8eec241e33384"},
+    {file = "html2pdf4doc-0.0.18.tar.gz", hash = "sha256:c319f47f252e3c4f5cb73dc2236e449941fc6326d0f5d92b64833a1462416fdb"},
 ]
 
 [package.dependencies]
@@ -835,6 +835,24 @@ MarkupSafe = ">=2.0"
 
 [package.extras]
 i18n = ["Babel (>=2.7)"]
+
+[[package]]
+name = "lark"
+version = "1.2.2"
+description = "a modern parsing library"
+optional = false
+python-versions = ">=3.8"
+groups = ["main"]
+files = [
+    {file = "lark-1.2.2-py3-none-any.whl", hash = "sha256:c2276486b02f0f1b90be155f2c8ba4a8e194d42775786db622faccd652d8e80c"},
+    {file = "lark-1.2.2.tar.gz", hash = "sha256:ca807d0162cd16cef15a8feecb862d7319e7a09bdb13aef927968e45040fed80"},
+]
+
+[package.extras]
+atomic-cache = ["atomicwrites"]
+interegular = ["interegular (>=0.3.1,<0.4.0)"]
+nearley = ["js2py"]
+regex = ["regex"]
 
 [[package]]
 name = "license-expression"
@@ -1910,6 +1928,18 @@ socks = ["PySocks (>=1.5.6,!=1.5.7)"]
 use-chardet-on-py3 = ["chardet (>=3.0.2,<6)"]
 
 [[package]]
+name = "robotframework"
+version = "7.3.1"
+description = "Generic automation framework for acceptance testing and robotic process automation (RPA)"
+optional = false
+python-versions = ">=3.8"
+groups = ["main"]
+files = [
+    {file = "robotframework-7.3.1-py3-none-any.whl", hash = "sha256:a8f181eb33b35a681f174874d58d40ce0d136f4c3a569d9a940e2f4024d64818"},
+    {file = "robotframework-7.3.1.tar.gz", hash = "sha256:10be47f826a5ecff09d08e57bf17fce124d38b6e022b380ce67c526ef747194f"},
+]
+
+[[package]]
 name = "ruff"
 version = "0.11.13"
 description = "An extremely fast Python linter and code formatter, written in Rust."
@@ -2091,27 +2121,29 @@ full = ["httpx (>=0.27.0,<0.29.0)", "itsdangerous", "jinja2", "python-multipart 
 
 [[package]]
 name = "strictdoc"
-version = "0.8.0"
+version = "0.9.1"
 description = "StrictDoc is open-source software for technical documentation and requirements management."
 optional = false
 python-versions = ">=3.8"
 groups = ["main"]
 files = [
-    {file = "strictdoc-0.8.0.tar.gz", hash = "sha256:6ec124635f0eebf38299fedf40218c353c34b9d552350f160ee8fa06ee8155a1"},
+    {file = "strictdoc-0.9.1.tar.gz", hash = "sha256:5b47ed229355632454aa2f79c70e89e81571228ee77b495be50156f875b2c695"},
 ]
 
 [package.dependencies]
 beautifulsoup4 = ">=4.12.0,<5.dev0"
 docutils = ">=0.16,<1.dev0"
 fastapi = ">=0.83.0"
-html2print = ">=0.0.15"
+html2pdf4doc = ">=0.0.18"
 html5lib = ">=1.1"
 jinja2 = ">=2.11.2"
+lark = ">=1.2.2"
 openpyxl = ">=3.1.0"
 pygments = ">=2.10.0,<3.dev0"
 python-datauri = ">=2.1.1,<3.dev0"
 python-multipart = "*"
 reqif = ">=0.0.39,<1.dev0"
+robotframework = ">=4.0.0"
 spdx-tools = "*"
 textx = ">=4.0.0,<5.dev0"
 toml = "*"
@@ -2767,4 +2799,4 @@ files = [
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.13"
-content-hash = "93b5c1122559afed065353eb4b92f62358ea21cdf48ac4f39668ec4b3f53eb51"
+content-hash = "8a4e6564ffca7f72f0c975ac836afcd3819092f235f24f842620f70e6fac840d"
