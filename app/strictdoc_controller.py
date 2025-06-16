@@ -511,7 +511,26 @@ async def export_document(
             # Determine the exported file path based on format
             export_file = None
             media_type = "application/octet-stream"
-            extension = format
+            # Map export formats to their corresponding file extensions
+            EXPORT_FORMAT_EXTENSIONS = {
+                "html": "zip",
+                "html2pdf": "pdf",
+                "json": "json",
+                "rst": "rst",
+                "reqif-sdoc": "reqif",
+                "reqifz-sdoc": "reqifz",
+                "sdoc": "sdoc",
+                "doxygen": "xml",
+                "spdx": "spdx",
+            }
+
+            # Derive the extension from the validated format
+            extension = EXPORT_FORMAT_EXTENSIONS.get(format)
+            if not extension:
+                raise HTTPException(
+                    status_code=HTTPStatus.BAD_REQUEST,
+                    detail=f"Invalid export format: {format}. Must be one of: {', '.join(EXPORT_FORMAT_EXTENSIONS.keys())}"
+                )
 
             if format == "html":
                 # For HTML, create a zip of the output directory
@@ -519,7 +538,6 @@ async def export_document(
                 shutil.make_archive(str(output_zip).replace(".zip", ""), "zip", output_dir)
                 export_file = output_zip
                 media_type = "application/zip"
-                extension = "zip"
             elif format == "html2pdf":
                 # PDF files can be in output directory
                 pdf_files = list(output_dir.glob("**/*.pdf"))
