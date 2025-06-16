@@ -5,6 +5,22 @@
   ],
   "packageRules": [
     {
+      "groupName": "all python dependencies",
+      "matchManagers": [
+        "poetry"
+      ],
+      "postUpdateOptions": [
+        "poetry-lock"
+      ],
+      "matchDatasources": [
+        "pypi"
+      ],
+      "excludePackageNames": [
+        "strictdoc"
+      ]
+    },
+    {
+      "groupName": "strictdoc minor updates",
       "matchManagers": [
         "poetry"
       ],
@@ -23,6 +39,7 @@
       ]
     },
     {
+      "groupName": "strictdoc major updates",
       "matchManagers": [
         "poetry"
       ],
