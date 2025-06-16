@@ -15,8 +15,8 @@
       "matchDatasources": [
         "pypi"
       ],
-      "excludePackageNames": [
-        "strictdoc"
+      "matchPackageNames": [
+        "!strictdoc"
       ]
     },
     {
