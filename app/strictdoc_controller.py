@@ -1,10 +1,14 @@
 """StrictDoc service controller module."""
 
+import asyncio
 import logging
 import os
+import platform
 import re
 import shutil
+import sys
 import tempfile
+import time
 from collections.abc import Awaitable, Callable
 from http import HTTPStatus
 from pathlib import Path
@@ -229,10 +233,6 @@ async def get_version() -> VersionInfo:
         VersionInfo: Version information about Python, StrictDoc, and the platform.
 
     """
-    import platform
-    import sys
-    import time
-
     # Get Python version
     python_version = sys.version.split()[0]
 
@@ -323,8 +323,6 @@ def process_sdoc_content(content: str, input_file: Path) -> None:
         # Extract the most relevant part of the error message
         if "TextXSyntaxError" in error_msg:
             # Extract the error location and message
-            import re
-
             match = re.match(r"^([^:]{1,256}):(\d{1,6}):(\d{1,6}):(.*)$", error_msg, re.DOTALL)
             if match:
                 _, line, col, message = match.groups()
@@ -336,7 +334,7 @@ def process_sdoc_content(content: str, input_file: Path) -> None:
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=error_msg) from e
 
 
-def export_with_action(input_file: Path, output_dir: Path, format_name: str) -> None:
+async def export_with_action(input_file: Path, output_dir: Path, format_name: str) -> None:
     """Export a document using ExportAction.
 
     Args:
@@ -348,24 +346,32 @@ def export_with_action(input_file: Path, output_dir: Path, format_name: str) -> 
     # Create output directory if it doesn't exist
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Set up command
-    import subprocess
-
     try:
-        # For other formats, use subprocess to call the strictdoc command line
+        # For other formats, use asyncio to call the strictdoc command line asynchronously
         # S603: subprocess call is safe here because input is controlled and not user-supplied
         cmd = ["strictdoc", "export", "--formats", format_name, "--output-dir", str(output_dir), str(input_file)]
         logging.info("Running command: %s", " ".join(cmd))
-        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
-        if result.stderr:
-            logging.warning("StrictDoc CLI warnings: %s", result.stderr)
+
+        # Use asyncio.create_subprocess_exec for non-blocking execution
+        process = await asyncio.create_subprocess_exec(*cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
+
+        _, stderr = await process.communicate()
+
+        if process.returncode != 0:
+            stderr_text = stderr.decode("utf-8") if stderr else "Unknown error"
+            logging.error("StrictDoc CLI error: %s", stderr_text)
+            raise RuntimeError(f"Export failed: {stderr_text}")
+
+        if stderr:
+            stderr_text = stderr.decode("utf-8")
+            logging.warning("StrictDoc CLI warnings: %s", stderr_text)
     except Exception as e:
         logging.exception("Export failed: %s", str(e))
         raise RuntimeError(f"Export failed: {e!s}") from e
 
 
 # ruff: noqa: C901 the function is too complex
-def export_to_format(input_file: Path, output_dir: Path, export_format: str) -> tuple[Path, str, str]:
+async def export_to_format(input_file: Path, output_dir: Path, export_format: str) -> tuple[Path, str, str]:
     """Export SDOC to specified format.
 
     Args:
@@ -413,7 +419,7 @@ def export_to_format(input_file: Path, output_dir: Path, export_format: str) -> 
     # Export the document
     try:
         # Call export_with_action for the actual export
-        export_with_action(input_file, output_dir, export_format)
+        await export_with_action(input_file, output_dir, export_format)
     except Exception as e:
         logging.exception("Export failed: %s", str(e))
         raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail=f"Export to {export_format} failed: {e!s}") from e
@@ -492,19 +498,21 @@ async def export_document(
 
             logging.info("Saved SDOC content to %s", input_file)
 
-            # Run StrictDoc export using the CLI
-            import subprocess
-
-            # S603: subprocess call is safe here because input is controlled and not user-supplied
+            # Run StrictDoc export using the CLI asynchronously
             cmd = ["strictdoc", "export", "--formats", export_format, "--output-dir", str(output_dir), str(input_file)]
 
             logging.info("Running StrictDoc export command: %s", " ".join(cmd))
 
-            # ruff: noqa: S603  # subprocess call is safe here because input is controlled and not user-supplied
-            result = subprocess.run(cmd, capture_output=True, text=True, check=False)
-            if result.returncode != 0:
-                logging.error("StrictDoc export failed: %s", result.stderr)
-                raise RuntimeError(f"StrictDoc export failed: {result.stderr}")
+            # Use asyncio.create_subprocess_exec instead of subprocess.run
+            process = await asyncio.create_subprocess_exec(*cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
+
+            _, stderr = await process.communicate()
+
+            if process.returncode != 0:
+                # Properly decode the stderr bytes
+                stderr_text = stderr.decode("utf-8") if stderr else "Unknown error"
+                logging.error("StrictDoc export failed: %s", stderr_text)
+                raise RuntimeError(f"StrictDoc export failed: {stderr_text}")
 
             # Determine the exported file path based on format
             export_file = None
