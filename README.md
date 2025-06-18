@@ -146,10 +146,6 @@ poetry run pre-commit run --all
 
 2. **Docker Tests**
    ```bash
-   # Full test suite in Docker environment
-   ./test_with_docker.sh
-   ```
-   ```bash
    # Container structure tests
    container-structure-test test --image strictdoc-service:0.0.0 --config ./tests/container/container-structure-test.yaml
    ```
@@ -267,26 +263,3 @@ The test suite is organized as follows:
   - Format-specific content validation
   - Error handling with real service
   - Connection error handling
-
-### Running Tests
-
-```bash
-# Run all tests
-poetry run pytest
-```
-```bash
-# Run only unit tests
-poetry run pytest tests/export/test_unit.py
-```
-```bash
-# Run only integration tests
-poetry run pytest tests/export/test_integration.py
-```
-```bash
-# Run with verbose output
-poetry run pytest -v
-```
-```bash
-# Run with coverage
-poetry run pytest --cov=app tests/
-```

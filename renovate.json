@@ -5,7 +5,6 @@
   ],
   "packageRules": [
     {
-      "groupName": "strictdoc minor updates",
       "matchManagers": [
         "poetry"
       ],
@@ -24,7 +23,6 @@
       ]
     },
     {
-      "groupName": "strictdoc major updates",
       "matchManagers": [
         "poetry"
       ],

@@ -2,9 +2,13 @@
 
 import logging
 import os
+import platform
 import re
 import shutil
+import subprocess
+import sys
 import tempfile
+import time
 from collections.abc import Awaitable, Callable
 from http import HTTPStatus
 from pathlib import Path
@@ -229,10 +233,6 @@ async def get_version() -> VersionInfo:
         VersionInfo: Version information about Python, StrictDoc, and the platform.
 
     """
-    import platform
-    import sys
-    import time
-
     # Get Python version
     python_version = sys.version.split()[0]
 
@@ -323,8 +323,6 @@ def process_sdoc_content(content: str, input_file: Path) -> None:
         # Extract the most relevant part of the error message
         if "TextXSyntaxError" in error_msg:
             # Extract the error location and message
-            import re
-
             match = re.match(r"^([^:]{1,256}):(\d{1,6}):(\d{1,6}):(.*)$", error_msg, re.DOTALL)
             if match:
                 _, line, col, message = match.groups()
@@ -349,7 +347,6 @@ def export_with_action(input_file: Path, output_dir: Path, format_name: str) -> 
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # Set up command
-    import subprocess
 
     try:
         # For other formats, use subprocess to call the strictdoc command line
@@ -493,8 +490,6 @@ async def export_document(
             logging.info("Saved SDOC content to %s", input_file)
 
             # Run StrictDoc export using the CLI
-            import subprocess
-
             # S603: subprocess call is safe here because input is controlled and not user-supplied
             cmd = ["strictdoc", "export", "--formats", export_format, "--output-dir", str(output_dir), str(input_file)]
 
