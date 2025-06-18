@@ -37,6 +37,20 @@ logger = logging.getLogger(__name__)
 # Service version
 SERVICE_VERSION = os.getenv("STRICTDOC_SERVICE_VERSION", "dev")
 
+# Define supported export formats with their file extensions and mime types
+EXPORT_FORMATS = {
+    "doxygen": {"extension": "xml", "mime_type": "text/plain"},
+    "excel": {"extension": "xlsx", "mime_type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"},
+    "html": {"extension": "zip", "mime_type": "application/zip"},
+    "html2pdf": {"extension": "pdf", "mime_type": "application/pdf"},
+    "json": {"extension": "json", "mime_type": "application/json"},
+    "reqif-sdoc": {"extension": "reqif", "mime_type": "application/xml"},
+    "reqifz-sdoc": {"extension": "reqifz", "mime_type": "application/zip"},
+    "rst": {"extension": "rst", "mime_type": "text/x-rst"},
+    "sdoc": {"extension": "sdoc", "mime_type": "text/plain"},
+    "spdx": {"extension": "spdx", "mime_type": "text/plain"},
+}
+
 app = FastAPI(
     title="StrictDoc Service API",
     description="API for StrictDoc document generation and export",
@@ -67,7 +81,7 @@ class FormatValidationMiddleware(BaseHTTPMiddleware):
         if request.url.path == "/export" and request.method == "POST":
             format_param = request.query_params.get("format")
             if format_param and format_param.lower() not in EXPORT_FORMATS:
-                return JSONResponse(status_code=HTTPStatus.BAD_REQUEST, content={"detail": f"Invalid export format: {format_param}. Must be one of: {', '.join(EXPORT_FORMATS)}"})
+                return JSONResponse(status_code=HTTPStatus.BAD_REQUEST, content={"detail": f"Invalid export format: {format_param}. Must be one of: {', '.join(EXPORT_FORMATS.keys())}"})
         return await call_next(request)
 
 
@@ -101,25 +115,11 @@ async def validation_exception_handler(exc: RequestValidationError) -> JSONRespo
 
     # If it's a format validation error, return a 400 Bad Request
     if format_validation_error:
-        return JSONResponse(status_code=HTTPStatus.BAD_REQUEST, content={"detail": f"Invalid export format. Must be one of: {', '.join(EXPORT_FORMATS)}"})
+        return JSONResponse(status_code=HTTPStatus.BAD_REQUEST, content={"detail": f"Invalid export format. Must be one of: {', '.join(EXPORT_FORMATS.keys())}"})
 
     # For other validation errors, use standard 422 response
     return JSONResponse(status_code=HTTPStatus.UNPROCESSABLE_ENTITY, content={"detail": error_details if error_details else exc.errors()})
 
-
-# Define supported export formats (based on StrictDoc 0.7.0)
-EXPORT_FORMATS = [
-    "html",
-    "html2pdf",
-    "rst",
-    "json",
-    "excel",
-    "reqif-sdoc",
-    "reqifz-sdoc",
-    "sdoc",
-    "doxygen",
-    "spdx",
-]
 
 # Monkey patch PickleCache.get_cached_file_path to handle Path objects
 original_get_cached_file_path = PickleCache.get_cached_file_path
@@ -256,7 +256,7 @@ def validate_export_format(export_format: str) -> None:
 
     """
     if export_format not in EXPORT_FORMATS:
-        raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=f"Invalid export format: {export_format}. Must be one of: {', '.join(EXPORT_FORMATS)}")
+        raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=f"Invalid export format: {export_format}. Must be one of: {', '.join(EXPORT_FORMATS.keys())}")
 
 
 def process_sdoc_content(content: str, input_file: Path) -> None:
@@ -390,31 +390,9 @@ async def export_to_format(input_file: Path, output_dir: Path, export_format: st
     if export_format not in EXPORT_FORMATS:
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=f"Invalid export format: {export_format}")
 
-    # Handle format-specific configurations
-    if export_format == "html":
-        extension = "zip"
-        mime_type = "application/zip"
-    elif export_format == "html2pdf":
-        extension = "pdf"
-        mime_type = "application/pdf"
-    elif export_format == "excel":
-        extension = "xlsx"
-        mime_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    elif export_format == "json":
-        extension = "json"
-        mime_type = "application/json"
-    elif export_format == "rst":
-        extension = "rst"
-        mime_type = "text/x-rst"
-    elif export_format == "reqif-sdoc":
-        extension = "reqif"
-        mime_type = "application/xml"
-    elif export_format == "reqifz-sdoc":
-        extension = "reqifz"
-        mime_type = "application/zip"
-    else:
-        extension = export_format
-        mime_type = "text/plain"
+    # Get format-specific configuration from EXPORT_FORMATS
+    extension = EXPORT_FORMATS[export_format]["extension"]
+    mime_type = EXPORT_FORMATS[export_format]["mime_type"]
 
     # Export the document
     try:
@@ -433,7 +411,7 @@ async def export_to_format(input_file: Path, output_dir: Path, export_format: st
         return output_zip, extension, mime_type
 
     # Find the exported file
-    pattern = "**/*.pdf" if export_format == "pdf" else f"*.{extension}"
+    pattern = "**/*.pdf" if export_format == "html2pdf" else f"*.{extension}"
     exported_files = list(output_dir.glob(pattern))
 
     if not exported_files:
@@ -517,47 +495,28 @@ async def export_document(
             # Determine the exported file path based on format
             export_file = None
             media_type = "application/octet-stream"
-            # Map export formats to their corresponding file extensions
-            EXPORT_FORMAT_EXTENSIONS = {
-                "html": "zip",
-                "html2pdf": "pdf",
-                "json": "json",
-                "rst": "rst",
-                "reqif-sdoc": "reqif",
-                "reqifz-sdoc": "reqifz",
-                "sdoc": "sdoc",
-                "doxygen": "xml",
-                "spdx": "spdx",
-                "excel": "xlsx",
-            }
 
-            # Derive the extension from the validated format
-            extension = EXPORT_FORMAT_EXTENSIONS.get(export_format)
-            if not extension:
-                raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=f"Invalid export format: {export_format}. Must be one of: {', '.join(EXPORT_FORMAT_EXTENSIONS.keys())}")
+            # Derive the extension and mime type from the validated format
+            extension = EXPORT_FORMATS[export_format]["extension"]
+            media_type = EXPORT_FORMATS[export_format]["mime_type"]
 
             if export_format == "html":
                 # For HTML, create a zip of the output directory
                 output_zip = temp_dir_path / "output.zip"
                 shutil.make_archive(str(output_zip).replace(".zip", ""), "zip", output_dir)
                 export_file = output_zip
-                media_type = "application/zip"
             elif export_format == "html2pdf":
                 # PDF files can be in output directory
                 pdf_files = list(output_dir.glob("**/*.pdf"))
                 if not pdf_files:
                     raise RuntimeError("No PDF file found in output after export")
                 export_file = pdf_files[0]
-                media_type = "application/pdf"
-                extension = "pdf"
             elif export_format == "excel":
                 # Excel files have .xlsx extension
                 excel_files = list(output_dir.glob("**/*.xlsx"))
                 if not excel_files:
                     raise RuntimeError("No Excel file found in output after export")
                 export_file = excel_files[0]
-                media_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                extension = "xlsx"
             elif export_format in ["json", "rst", "reqif-sdoc", "reqifz-sdoc", "sdoc", "doxygen", "spdx"]:
                 # Search for any file with the format's extension
                 search_pattern = f"**/*.{export_format}"
@@ -574,20 +533,6 @@ async def export_document(
                     raise RuntimeError(f"No {export_format} file found in output after export")
 
                 export_file = found_files[0]
-
-                # Set media type based on format
-                if export_format == "json":
-                    media_type = "application/json"
-                elif export_format == "rst":
-                    media_type = "text/x-rst"
-                    extension = "rst"
-                elif export_format in ["reqif-sdoc", "reqifz-sdoc"]:
-                    media_type = "application/xml" if export_format == "reqif-sdoc" else "application/zip"
-                    extension = export_format.split("-")[0]
-                else:
-                    # Default for other formats
-                    media_type = "text/plain"
-                    extension = export_format
 
             if not export_file:
                 raise RuntimeError(f"No {export_format} file found in output after export")
