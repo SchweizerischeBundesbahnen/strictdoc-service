@@ -204,20 +204,6 @@ async def get_version() -> VersionInfo:
     return VersionInfo(python=python_version, strictdoc=strictdoc_version, platform=platform_info, timestamp=timestamp, strictdoc_service=SERVICE_VERSION)
 
 
-def validate_export_format(export_format: str) -> None:
-    """Validate the export format.
-
-    Args:
-        export_format: Format to validate
-
-    Raises:
-        HTTPException: If format is invalid
-
-    """
-    if export_format not in EXPORT_FORMATS:
-        raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=f"Invalid export format: {export_format}. Must be one of: {', '.join(EXPORT_FORMATS.keys())}")
-
-
 def process_sdoc_content(content: str, input_file: Path) -> None:
     """Process and validate SDOC content.
 
@@ -369,25 +355,15 @@ async def export_to_format(input_file: Path, output_dir: Path, export_format: st
         return output_zip, extension, mime_type
 
     # Find the exported file - handle special cases
-    if export_format == "html2pdf":
-        # PDF files can be in subdirectories
-        exported_files = list(output_dir.glob("**/*.pdf"))
-    elif export_format in ["json", "rst", "reqif-sdoc", "reqifz-sdoc", "sdoc", "doxygen", "spdx"]:
-        # Search for any file with the format's extension
-        search_pattern = f"**/*.{export_format}"
-        if export_format in {"reqif-sdoc", "reqifz-sdoc"}:
-            # These have different extension patterns
-            search_pattern = "**/*.reqif" if export_format == "reqif-sdoc" else "**/*.reqifz"
-
+    if export_format in {"reqif-sdoc", "reqifz-sdoc"}:
+        # These formats have different extension patterns from their format names
+        search_pattern = "**/*.reqif" if export_format == "reqif-sdoc" else "**/*.reqifz"
         exported_files = list(output_dir.glob(search_pattern))
         if not exported_files:
-            # Try with just the extension from EXPORT_FORMATS
+            # Try with the extension from EXPORT_FORMATS
             exported_files = list(output_dir.glob(f"**/*.{extension}"))
-        if not exported_files:
-            # Try with base format name (for reqif-sdoc -> reqif)
-            exported_files = list(output_dir.glob(f"**/*.{export_format.split('-')[0]}"))
     else:
-        # Default pattern for other formats (excel, etc.)
+        # Use the extension from EXPORT_FORMATS for all formats (including html2pdf -> pdf)
         exported_files = list(output_dir.glob(f"**/*.{extension}"))
 
     if not exported_files:
