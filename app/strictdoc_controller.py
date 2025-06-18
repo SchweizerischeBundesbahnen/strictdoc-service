@@ -292,7 +292,6 @@ async def run_strictdoc_command(cmd: list[str]) -> None:
 
     try:
         # Use asyncio.create_subprocess_exec for non-blocking execution
-        # S603: subprocess call is safe here because input is controlled and not user-supplied
         process = await asyncio.create_subprocess_exec(*cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
 
         _, stderr = await process.communicate()
@@ -324,8 +323,6 @@ async def export_with_action(input_file: Path, output_dir: Path, format_name: st
     output_dir.mkdir(parents=True, exist_ok=True)
 
     try:
-        # For other formats, use asyncio to call the strictdoc command line asynchronously
-        # S603: subprocess call is safe here because input is controlled and not user-supplied
         cmd = ["strictdoc", "export", "--formats", format_name, "--output-dir", str(output_dir), str(input_file)]
         await run_strictdoc_command(cmd)
     except Exception as e:
@@ -373,6 +370,27 @@ async def export_to_format(input_file: Path, output_dir: Path, export_format: st
         return output_zip, extension, mime_type
 
     # Find the exported file - handle special cases
+    exported_file = find_exported_file(output_dir, export_format, extension)
+
+    return exported_file, extension, mime_type
+
+
+def find_exported_file(output_dir: Path, export_format: str, extension: str) -> Path:
+    """Find the exported file in the output directory.
+
+    Args:
+        output_dir: Directory where exported files are located
+        export_format: The export format name
+        extension: The expected file extension from EXPORT_FORMATS
+
+    Returns:
+        Path: Path to the found exported file
+
+    Raises:
+        HTTPException: If no exported file is found
+
+    """
+    # Handle special cases for file search patterns
     if export_format in {"reqif-sdoc", "reqifz-sdoc"}:
         # These formats have different extension patterns from their format names
         search_pattern = "**/*.reqif" if export_format == "reqif-sdoc" else "**/*.reqifz"
@@ -388,11 +406,10 @@ async def export_to_format(input_file: Path, output_dir: Path, export_format: st
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=f"No {extension} file found in output after export")
 
     logging.info("Found exported file: %s", exported_files[0])
-    return exported_files[0], extension, mime_type
+    return exported_files[0]
 
 
 @app.post("/export", response_class=FileResponse)
-# ruff: noqa: PLR0912, PLR0915, C901  # Too many branches/statements, function is too complex
 async def export_document(
     sdoc_content: str = Body(..., media_type="text/plain", description="SDOC content to export"),
     format: str = Query("html", description="Export format"),
