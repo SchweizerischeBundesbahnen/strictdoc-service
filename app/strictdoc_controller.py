@@ -12,7 +12,6 @@ import time
 from collections.abc import Awaitable, Callable
 from http import HTTPStatus
 from pathlib import Path
-from typing import Any
 
 import uvicorn
 from fastapi import Body, FastAPI, HTTPException, Query
@@ -20,7 +19,6 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
 from starlette.background import BackgroundTask
-from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
 
@@ -58,43 +56,13 @@ app = FastAPI(
 )
 
 
-# Custom middleware for format validation
-class FormatValidationMiddleware(BaseHTTPMiddleware):
-    """Middleware for validating export format parameter.
-
-    This middleware intercepts requests to the export endpoint and validates
-    that the format parameter is one of the supported export formats.
-    """
-
-    async def dispatch(self, request: Request, call_next: Callable[[Request], Any]) -> JSONResponse:
-        """Process the request and validate the format parameter.
-
-        Args:
-            request: The incoming request
-            call_next: The next middleware in the chain
-
-        Returns:
-            JSONResponse: The response from the next middleware or an error response
-
-        """
-        # Only intercept requests to the export endpoint
-        if request.url.path == "/export" and request.method == "POST":
-            format_param = request.query_params.get("format")
-            if format_param and format_param.lower() not in EXPORT_FORMATS:
-                return JSONResponse(status_code=HTTPStatus.BAD_REQUEST, content={"detail": f"Invalid export format: {format_param}. Must be one of: {', '.join(EXPORT_FORMATS.keys())}"})
-        return await call_next(request)
-
-
-# Add our custom middleware
-app.add_middleware(FormatValidationMiddleware)
-
-
 # Add exception handler for FastAPI's validation errors
 @app.exception_handler(RequestValidationError)
-async def validation_exception_handler(exc: RequestValidationError) -> JSONResponse:
+async def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
     """Convert 422 validation errors to 400 Bad Request for format validation.
 
     Args:
+        request: The request that caused the exception
         exc: The validation error
 
     Returns:
@@ -210,18 +178,9 @@ async def log_requests(request: Request, call_next: Callable[[Request], Awaitabl
         Response: The response from the next middleware
 
     """
-    logger.info(
-        "Request: %s %s",
-        request.method,
-        request.url.path,
-    )
+    logger.info("Request: %s %s", request.method, request.url.path)
     response = await call_next(request)
-    logger.info(
-        "Response: %s %s, Status: %s",
-        request.method,
-        request.url.path,
-        response.status_code,
-    )
+    logger.info("Response: %s %s, Status: %s", request.method, request.url.path, response.status_code)
     return response
 
 
@@ -370,7 +329,6 @@ async def export_with_action(input_file: Path, output_dir: Path, format_name: st
         raise RuntimeError(f"Export failed: {e!s}") from e
 
 
-# ruff: noqa: C901 the function is too complex
 async def export_to_format(input_file: Path, output_dir: Path, export_format: str) -> tuple[Path, str, str]:
     """Export SDOC to specified format.
 
@@ -447,14 +405,13 @@ async def export_document(
     # Validate format against allowlist
     export_format = format.lower()
     if export_format not in EXPORT_FORMATS:
-        raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=f"Invalid export format: {export_format}. Must be one of: {', '.join(EXPORT_FORMATS)}")
+        raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=f"Invalid export format: {export_format}. Must be one of: {', '.join(EXPORT_FORMATS.keys())}")
 
     # Sanitize filename to prevent path traversal
     sanitized_file_name = sanitize_filename(file_name)
     if sanitized_file_name != file_name:
         # Use sanitized_file_name instead of raw file_name to prevent log injection
         logging.warning("Sanitized filename from %r to %r", sanitized_file_name, sanitized_file_name)
-        file_name = sanitized_file_name
 
     # Basic validation of SDOC content
     if not sdoc_content or "[DOCUMENT]" not in sdoc_content:
