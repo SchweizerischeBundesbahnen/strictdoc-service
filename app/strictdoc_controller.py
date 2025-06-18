@@ -279,6 +279,38 @@ def process_sdoc_content(content: str, input_file: Path) -> None:
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=error_msg) from e
 
 
+async def run_strictdoc_command(cmd: list[str]) -> None:
+    """Run a StrictDoc command asynchronously.
+
+    Args:
+        cmd: The command to run as a list of strings
+
+    Raises:
+        RuntimeError: If the command fails or returns non-zero exit code
+    """
+    logging.info("Running command: %s", " ".join(cmd))
+
+    try:
+        # Use asyncio.create_subprocess_exec for non-blocking execution
+        # S603: subprocess call is safe here because input is controlled and not user-supplied
+        process = await asyncio.create_subprocess_exec(*cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
+
+        _, stderr = await process.communicate()
+
+        if process.returncode != 0:
+            stderr_text = stderr.decode("utf-8") if stderr else "Unknown error"
+            logging.error("StrictDoc CLI error: %s", stderr_text)
+            raise RuntimeError(f"StrictDoc command failed: {stderr_text}")
+
+        if stderr:
+            stderr_text = stderr.decode("utf-8")
+            logging.warning("StrictDoc CLI warnings: %s", stderr_text)
+
+    except Exception as e:
+        logging.exception("Command execution failed: %s", str(e))
+        raise RuntimeError(f"Command execution failed: {e!s}") from e
+
+
 async def export_with_action(input_file: Path, output_dir: Path, format_name: str) -> None:
     """Export a document using ExportAction.
 
@@ -295,21 +327,7 @@ async def export_with_action(input_file: Path, output_dir: Path, format_name: st
         # For other formats, use asyncio to call the strictdoc command line asynchronously
         # S603: subprocess call is safe here because input is controlled and not user-supplied
         cmd = ["strictdoc", "export", "--formats", format_name, "--output-dir", str(output_dir), str(input_file)]
-        logging.info("Running command: %s", " ".join(cmd))
-
-        # Use asyncio.create_subprocess_exec for non-blocking execution
-        process = await asyncio.create_subprocess_exec(*cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
-
-        _, stderr = await process.communicate()
-
-        if process.returncode != 0:
-            stderr_text = stderr.decode("utf-8") if stderr else "Unknown error"
-            logging.error("StrictDoc CLI error: %s", stderr_text)
-            raise RuntimeError(f"Export failed: {stderr_text}")
-
-        if stderr:
-            stderr_text = stderr.decode("utf-8")
-            logging.warning("StrictDoc CLI warnings: %s", stderr_text)
+        await run_strictdoc_command(cmd)
     except Exception as e:
         logging.exception("Export failed: %s", str(e))
         raise RuntimeError(f"Export failed: {e!s}") from e
