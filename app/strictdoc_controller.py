@@ -368,9 +368,27 @@ async def export_to_format(input_file: Path, output_dir: Path, export_format: st
         shutil.make_archive(str(zip_base_name), "zip", output_dir)
         return output_zip, extension, mime_type
 
-    # Find the exported file
-    pattern = "**/*.pdf" if export_format == "html2pdf" else f"*.{extension}"
-    exported_files = list(output_dir.glob(pattern))
+    # Find the exported file - handle special cases
+    if export_format == "html2pdf":
+        # PDF files can be in subdirectories
+        exported_files = list(output_dir.glob("**/*.pdf"))
+    elif export_format in ["json", "rst", "reqif-sdoc", "reqifz-sdoc", "sdoc", "doxygen", "spdx"]:
+        # Search for any file with the format's extension
+        search_pattern = f"**/*.{export_format}"
+        if export_format in {"reqif-sdoc", "reqifz-sdoc"}:
+            # These have different extension patterns
+            search_pattern = "**/*.reqif" if export_format == "reqif-sdoc" else "**/*.reqifz"
+
+        exported_files = list(output_dir.glob(search_pattern))
+        if not exported_files:
+            # Try with just the extension from EXPORT_FORMATS
+            exported_files = list(output_dir.glob(f"**/*.{extension}"))
+        if not exported_files:
+            # Try with base format name (for reqif-sdoc -> reqif)
+            exported_files = list(output_dir.glob(f"**/*.{export_format.split('-')[0]}"))
+    else:
+        # Default pattern for other formats (excel, etc.)
+        exported_files = list(output_dir.glob(f"**/*.{extension}"))
 
     if not exported_files:
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=f"No {extension} file found in output after export")
@@ -404,8 +422,7 @@ async def export_document(
 
     # Validate format against allowlist
     export_format = format.lower()
-    if export_format not in EXPORT_FORMATS:
-        raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=f"Invalid export format: {export_format}. Must be one of: {', '.join(EXPORT_FORMATS.keys())}")
+    # Note: format validation is handled in export_to_format function
 
     # Sanitize filename to prevent path traversal
     sanitized_file_name = sanitize_filename(file_name)
@@ -433,66 +450,8 @@ async def export_document(
 
             logging.info("Saved SDOC content to %s", input_file)
 
-            # Run StrictDoc export using the CLI asynchronously
-            cmd = ["strictdoc", "export", "--formats", export_format, "--output-dir", str(output_dir), str(input_file)]
-
-            logging.info("Running StrictDoc export command: %s", " ".join(cmd))
-
-            # Use asyncio.create_subprocess_exec instead of subprocess.run
-            process = await asyncio.create_subprocess_exec(*cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
-
-            _, stderr = await process.communicate()
-
-            if process.returncode != 0:
-                # Properly decode the stderr bytes
-                stderr_text = stderr.decode("utf-8") if stderr else "Unknown error"
-                logging.error("StrictDoc export failed: %s", stderr_text)
-                raise RuntimeError(f"StrictDoc export failed: {stderr_text}")
-
-            # Determine the exported file path based on format
-            export_file = None
-            media_type = "application/octet-stream"
-
-            # Derive the extension and mime type from the validated format
-            extension = EXPORT_FORMATS[export_format]["extension"]
-            media_type = EXPORT_FORMATS[export_format]["mime_type"]
-
-            if export_format == "html":
-                # For HTML, create a zip of the output directory
-                output_zip = temp_dir_path / "output.zip"
-                shutil.make_archive(str(output_zip).replace(".zip", ""), "zip", output_dir)
-                export_file = output_zip
-            elif export_format == "html2pdf":
-                # PDF files can be in output directory
-                pdf_files = list(output_dir.glob("**/*.pdf"))
-                if not pdf_files:
-                    raise RuntimeError("No PDF file found in output after export")
-                export_file = pdf_files[0]
-            elif export_format == "excel":
-                # Excel files have .xlsx extension
-                excel_files = list(output_dir.glob("**/*.xlsx"))
-                if not excel_files:
-                    raise RuntimeError("No Excel file found in output after export")
-                export_file = excel_files[0]
-            elif export_format in ["json", "rst", "reqif-sdoc", "reqifz-sdoc", "sdoc", "doxygen", "spdx"]:
-                # Search for any file with the format's extension
-                search_pattern = f"**/*.{export_format}"
-                if export_format in {"reqif-sdoc", "reqifz-sdoc"}:
-                    # These have different extension patterns
-                    search_pattern = "**/*.reqif" if export_format == "reqif-sdoc" else "**/*.reqifz"
-
-                found_files = list(output_dir.glob(search_pattern))
-                if not found_files:
-                    # Try with just the extension
-                    found_files = list(output_dir.glob(f"**/*.{export_format.split('-')[0]}"))
-
-                if not found_files:
-                    raise RuntimeError(f"No {export_format} file found in output after export")
-
-                export_file = found_files[0]
-
-            if not export_file:
-                raise RuntimeError(f"No {export_format} file found in output after export")
+            # Use the consolidated export_to_format function
+            export_file, extension, media_type = await export_to_format(input_file, output_dir, export_format)
 
             # Create a secure path for the temporary file in a controlled directory
             temp_dir_obj = tempfile.gettempdir()
