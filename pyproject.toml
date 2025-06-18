@@ -28,7 +28,7 @@ mypy = "1.16.1"
 tox = "4.27.0"
 docker = "7.1.0"
 # for debug source code for pytest
-pytest = "8.4.0"
+pytest = "8.4.1"
 pytest-cov = "6.2.1"
 pytest-mock = "3.14.1"
 pytest-asyncio = "1.0.0"
