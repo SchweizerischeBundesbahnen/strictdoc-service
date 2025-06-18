@@ -29,6 +29,8 @@ from strictdoc.backend.sdoc.reader import SDReader  # type: ignore[import]
 from strictdoc.cli.main import ProjectConfig  # type: ignore[import]
 from strictdoc.core.environment import SDocRuntimeEnvironment  # type: ignore[import]
 
+from app.sanitization import normalize_line_endings, sanitize_filename, sanitize_for_logging
+
 # Create a custom logger
 logger = logging.getLogger(__name__)
 
@@ -142,29 +144,6 @@ class ErrorResponse(BaseModel):
     details: str | None = None
 
 
-# Function to sanitize file names
-def sanitize_filename(filename: str) -> str:
-    """Sanitize a filename to prevent path traversal attacks.
-
-    Args:
-        filename: The filename to sanitize
-
-    Returns:
-        str: The sanitized filename
-    """
-    # Remove any path components, only keep the base filename
-    sanitized = Path(filename).name
-
-    # Additional sanitization - keep only alphanumeric chars, underscore, hyphen, and dot
-    sanitized = re.sub(r"[^\w.-]", "_", sanitized)
-
-    # Ensure the filename is not empty or starts with a dot
-    if not sanitized or sanitized.startswith("."):
-        sanitized = "document" + sanitized
-
-    return sanitized
-
-
 # Middleware for logging
 @app.middleware("http")
 async def log_requests(request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
@@ -216,7 +195,7 @@ def process_sdoc_content(content: str, input_file: Path) -> None:
 
     """
     # Normalize line endings to Unix style
-    content = content.replace("\r\n", "\n").replace("\r", "\n")
+    content = normalize_line_endings(content)
 
     # Very basic validation of SDOC content
     if "[DOCUMENT]" not in content:
@@ -255,6 +234,7 @@ def process_sdoc_content(content: str, input_file: Path) -> None:
             reqif_import_markup=None,
             config_last_update=None,
             chromedriver=None,
+            test_report_root_dict={},  # Add the missing required parameter
         )
 
         # Monkey patch the config to avoid TypeError in pickle_cache.py
@@ -427,8 +407,8 @@ async def export_document(
 
     """
     # Sanitize user input for logging
-    sanitized_format = format.replace("\n", "").replace("\r", "")
-    sanitized_file_name = file_name.replace("\n", "").replace("\r", "")
+    sanitized_format = sanitize_for_logging(format)
+    sanitized_file_name = sanitize_for_logging(file_name)
     logging.info("Export requested for format: %r, filename: %r", sanitized_format, sanitized_file_name)
 
     # Validate format against allowlist
@@ -478,8 +458,8 @@ async def export_document(
             # Copy the file
             shutil.copy2(export_file, persistent_temp_file)
 
-            sanitized_format = export_format.replace("\n", "").replace("\r", "")
-            sanitized_persistent_temp_file = str(persistent_temp_file).replace("\n", "").replace("\r", "")
+            sanitized_format = sanitize_for_logging(export_format)
+            sanitized_persistent_temp_file = sanitize_for_logging(str(persistent_temp_file))
             logging.info("Exported %s file to %s", sanitized_format, sanitized_persistent_temp_file)
 
             # Create cleanup function
