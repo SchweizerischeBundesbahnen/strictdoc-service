@@ -235,6 +235,8 @@ def process_sdoc_content(content: str, input_file: Path) -> None:
             config_last_update=None,
             chromedriver=None,
             test_report_root_dict={},  # Add the missing required parameter
+            source_nodes=[],  # Added missing required parameter
+            section_behavior={},  # Added missing required parameter
         )
 
         # Monkey patch the config to avoid TypeError in pickle_cache.py
