@@ -36,8 +36,14 @@ logger = logging.getLogger(__name__)
 # Service version
 SERVICE_VERSION = os.getenv("STRICTDOC_SERVICE_VERSION", "dev")
 
-# Build timestamp - use environment variable set during Docker build
-BUILD_TIMESTAMP = os.getenv("BUILD_TIMESTAMP", "")
+# Read build timestamp from file
+BUILD_TIMESTAMP = ""
+timestamp_file = Path("/opt/strictdoc/.build_timestamp")
+if timestamp_file.exists():
+    try:
+        BUILD_TIMESTAMP = timestamp_file.read_text().strip()
+    except Exception as e:
+        logging.warning(f"Failed to read build timestamp: {e}")
 
 # Define supported export formats with their file extensions and mime types
 EXPORT_FORMATS = {
