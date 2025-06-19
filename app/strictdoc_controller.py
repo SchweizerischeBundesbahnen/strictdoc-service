@@ -8,7 +8,6 @@ import re
 import shutil
 import sys
 import tempfile
-import time
 from collections.abc import Awaitable, Callable
 from http import HTTPStatus
 from pathlib import Path
@@ -36,6 +35,15 @@ logger = logging.getLogger(__name__)
 
 # Service version
 SERVICE_VERSION = os.getenv("STRICTDOC_SERVICE_VERSION", "dev")
+
+# Read build timestamp from file
+BUILD_TIMESTAMP = ""
+timestamp_file = Path("/opt/strictdoc/.build_timestamp")
+if timestamp_file.exists():
+    try:
+        BUILD_TIMESTAMP = timestamp_file.read_text().strip()
+    except Exception as e:
+        logging.warning(f"Failed to read build timestamp: {e}")
 
 # Define supported export formats with their file extensions and mime types
 EXPORT_FORMATS = {
@@ -177,8 +185,8 @@ async def get_version() -> VersionInfo:
     # Get platform info
     platform_info = platform.platform()
 
-    # Get current timestamp
-    timestamp = time.strftime("%Y-%m-%d %H:%M:%S %Z", time.localtime())
+    # Use the build timestamp from the Docker image build time
+    timestamp = BUILD_TIMESTAMP
 
     return VersionInfo(python=python_version, strictdoc=strictdoc_version, platform=platform_info, timestamp=timestamp, strictdoc_service=SERVICE_VERSION)
 

@@ -46,7 +46,6 @@ ENV PYTHONUNBUFFERED=1 \
 
 WORKDIR ${WORKING_DIR}
 
-# Create build timestamp
 RUN BUILD_TIMESTAMP="$(date -u +'%Y-%m-%dT%H:%M:%SZ')" && \
     echo "${BUILD_TIMESTAMP}" > "${WORKING_DIR}/.build_timestamp"
 
