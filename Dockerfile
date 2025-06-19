@@ -27,6 +27,10 @@ LABEL maintainer="SBB Polarion Team <polarion-opensource@sbb.ch>" \
       org.opencontainers.image.description="API service for StrictDoc document processing" \
       org.opencontainers.image.vendor="SBB"
 
+# Set build timestamp as environment variable (will be set during build with --build-arg)
+ARG BUILD_TIMESTAMP=""
+ENV BUILD_TIMESTAMP=${BUILD_TIMESTAMP}
+
 # hadolint ignore=DL3008
 RUN apt-get update && \
     apt-get upgrade -y && \

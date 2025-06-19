@@ -23,23 +23,32 @@ This directory contains the test suite for the StrictDoc service.
 ## Running Tests
 
 ### Quick Test Run
+
+Run all tests
 ```bash
-# Run all tests
 poetry run pytest
-
-# Run specific test file
+```
+Run specific test file
+```bash
 poetry run pytest tests/export/test_unit.py -v
-
-# Run with coverage
+```
+Run with coverage
+```bash
 poetry run pytest --cov=src tests/ --cov-report=term-missing
 ```
 
 ### Docker-based Testing
-```bash
-# Full test suite in Docker environment
-./test_with_docker.sh
 
-# Container structure tests
+Smoke test suite in Docker environment
+```bash
+cd ..
+./tests/shell/test_strictdoc_service.sh
+```
+
+
+Container structure tests
+```bash
+cd ..
 container-structure-test test --image strictdoc-service:local --config ./tests/container/container-structure-test.yaml
 ```
 
