@@ -12,6 +12,8 @@ dependencies = [
     "strictdoc==0.9.1",
     "fastapi==0.115.13",
     "uvicorn==0.34.3",
+    # pinning version to avoid security issues
+    "urllib3==2.5.0",  # if not pinned, "poetry update" will downgrade it to from 2.5.0 to 2.4.0
 ]
 
 [tool.poetry]
