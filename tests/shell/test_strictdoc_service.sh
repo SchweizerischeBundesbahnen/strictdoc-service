@@ -148,7 +148,7 @@ cat > "${SDOC_FILE}" << 'EOF'
 [DOCUMENT]
 TITLE: Test Document
 
-[SECTION]
+[[SECTION]]
 TITLE: Test Section
 
 [REQUIREMENT]
@@ -167,7 +167,7 @@ STATEMENT: >>>
 This is another test requirement
 <<<
 
-[/SECTION]
+[[/SECTION]]
 EOF
 
 # Test 2a: Export SDOC to JSON

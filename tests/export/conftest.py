@@ -46,7 +46,7 @@ def sample_sdoc() -> str:
     return """[DOCUMENT]
 TITLE: Test Document
 
-[SECTION]
+[[SECTION]]
 TITLE: Test Section
 
 [REQUIREMENT]
@@ -65,7 +65,7 @@ STATEMENT: >>>
 This is another test requirement
 <<<
 
-[/SECTION]
+[[/SECTION]]
 """
 
 
