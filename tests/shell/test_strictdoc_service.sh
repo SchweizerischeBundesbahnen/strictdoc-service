@@ -610,7 +610,7 @@ log "Test 3: Testing invalid export format..."
 INVALID_RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" \
     -X POST \
     -H "Content-Type: text/plain" \
-    --data-binary "${SDOC_CONTENT}" \
+    --data-binary "@${SDOC_FILE}" \
     "${BASE_URL}/export?format=invalid&file_name=test-export")
 
 if [ "$INVALID_RESPONSE" -ne 400 ]; then

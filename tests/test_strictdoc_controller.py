@@ -1,7 +1,13 @@
 """Tests for the StrictDoc controller module."""
 
+import asyncio
+import tempfile
+from pathlib import Path
+from unittest.mock import AsyncMock, Mock, patch
+
 import pytest
 from fastapi.testclient import TestClient
+from fastapi import HTTPException
 
 
 @pytest.fixture
@@ -35,7 +41,280 @@ def test_version(monkeypatch: pytest.MonkeyPatch, client: TestClient) -> None:
     assert "platform" in result
 
 
-# Note: Export-related tests have been moved to these files:
-# - tests/test_export_formats.py - Main test file for export formats
-# - tests/unit/test_export.py - Unit tests for export functionality
-# - tests/integration/test_export_integration.py - Integration tests for export
+def test_find_exported_file_success() -> None:
+    """Test that find_exported_file correctly finds exported files."""
+    from app.strictdoc_controller import find_exported_file
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        temp_path = Path(temp_dir)
+
+        # Create a test file
+        test_file = temp_path / "test.pdf"
+        test_file.write_text("test content")
+
+        # Test finding the file
+        result = find_exported_file(temp_path, "html2pdf", "pdf")
+        assert result == test_file
+
+
+def test_find_exported_file_not_found() -> None:
+    """Test that find_exported_file raises exception when file not found."""
+    from app.strictdoc_controller import find_exported_file
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        temp_path = Path(temp_dir)
+
+        # Test with no files
+        with pytest.raises(HTTPException) as exc_info:
+            find_exported_file(temp_path, "html2pdf", "pdf")
+
+        assert exc_info.value.status_code == 400
+        assert "No pdf file found" in str(exc_info.value.detail)
+
+
+def test_find_exported_file_special_formats() -> None:
+    """Test find_exported_file with special formats like reqif-sdoc."""
+    from app.strictdoc_controller import find_exported_file
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        temp_path = Path(temp_dir)
+
+        # Create test file for reqif-sdoc
+        test_file = temp_path / "test.reqif"
+        test_file.write_text("test content")
+
+        # Test finding reqif-sdoc file
+        result = find_exported_file(temp_path, "reqif-sdoc", "reqif")
+        assert result == test_file
+
+
+@pytest.mark.asyncio
+async def test_run_strictdoc_command_success() -> None:
+    """Test successful execution of run_strictdoc_command."""
+    from app.strictdoc_controller import run_strictdoc_command
+
+    # Mock successful subprocess
+    with patch("asyncio.create_subprocess_exec") as mock_subprocess:
+        mock_process = AsyncMock()
+        mock_process.communicate.return_value = (b"", b"")
+        mock_process.returncode = 0
+        mock_subprocess.return_value = mock_process
+
+        # Should not raise any exception
+        await run_strictdoc_command(["echo", "test"])
+
+        mock_subprocess.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_run_strictdoc_command_failure() -> None:
+    """Test failure handling in run_strictdoc_command."""
+    from app.strictdoc_controller import run_strictdoc_command
+
+    # Mock failed subprocess
+    with patch("asyncio.create_subprocess_exec") as mock_subprocess:
+        mock_process = AsyncMock()
+        mock_process.communicate.return_value = (b"", b"Error occurred")
+        mock_process.returncode = 1
+        mock_subprocess.return_value = mock_process
+
+        with pytest.raises(RuntimeError) as exc_info:
+            await run_strictdoc_command(["false"])
+
+        assert "StrictDoc command failed" in str(exc_info.value)
+
+
+@pytest.mark.asyncio
+async def test_export_with_action() -> None:
+    """Test the export_with_action function."""
+    from app.strictdoc_controller import export_with_action
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        temp_path = Path(temp_dir)
+        input_file = temp_path / "input.sdoc"
+        output_dir = temp_path / "output"
+
+        input_file.write_text("[DOCUMENT]\nTitle: Test")
+
+        # Mock the strictdoc command
+        with patch("app.strictdoc_controller.run_strictdoc_command") as mock_run:
+            mock_run.return_value = None
+
+            # Should not raise any exception
+            await export_with_action(input_file, output_dir, "html")
+
+            # Verify the command was called
+            mock_run.assert_called_once()
+            args = mock_run.call_args[0][0]
+            assert "strictdoc" in args
+            assert "export" in args
+            assert "html" in args
+
+
+def test_process_sdoc_content_success() -> None:
+    """Test successful SDOC content processing."""
+    from app.strictdoc_controller import process_sdoc_content
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        temp_path = Path(temp_dir)
+        input_file = temp_path / "test.sdoc"
+
+        valid_content = "[DOCUMENT]\nTitle: Test Document\n"
+
+        # Mock the SDReader and related classes
+        with patch("app.strictdoc_controller.SDReader") as mock_reader:
+            mock_reader_instance = Mock()
+            mock_reader.return_value = mock_reader_instance
+            mock_reader_instance.read_from_file.return_value = None
+
+            # Should not raise any exception
+            process_sdoc_content(valid_content, input_file)
+
+            # Verify file was written
+            assert input_file.exists()
+            content = input_file.read_text()
+            assert "[DOCUMENT]" in content
+
+
+def test_process_sdoc_content_invalid() -> None:
+    """Test SDOC content processing with invalid content."""
+    from app.strictdoc_controller import process_sdoc_content
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        temp_path = Path(temp_dir)
+        input_file = temp_path / "test.sdoc"
+
+        invalid_content = "This is not valid SDOC content"
+
+        with pytest.raises(HTTPException) as exc_info:
+            process_sdoc_content(invalid_content, input_file)
+
+        assert exc_info.value.status_code == 400
+        assert "Missing [DOCUMENT] section" in str(exc_info.value.detail)
+
+
+def test_process_sdoc_content_line_endings() -> None:
+    """Test that SDOC content processing normalizes line endings."""
+    from app.strictdoc_controller import process_sdoc_content
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        temp_path = Path(temp_dir)
+        input_file = temp_path / "test.sdoc"
+
+        # Content with mixed line endings
+        content_with_mixed_endings = "[DOCUMENT]\r\nTitle: Test\rContent here\n"
+
+        with patch("app.strictdoc_controller.SDReader") as mock_reader:
+            mock_reader_instance = Mock()
+            mock_reader.return_value = mock_reader_instance
+            mock_reader_instance.read_from_file.return_value = None
+
+            process_sdoc_content(content_with_mixed_endings, input_file)
+
+            # Verify line endings were normalized
+            written_content = input_file.read_text()
+            assert "\r\n" not in written_content
+            assert "\r" not in written_content
+            assert written_content.count("\n") == 3  # Should have Unix line endings
+
+
+def test_validation_exception_handler_format_error(client: TestClient) -> None:
+    """Test that format validation errors return 400 status."""
+    # Test with invalid format parameter
+    response = client.post(
+        "/export?format=invalid_format",
+        data="[DOCUMENT]\nTitle: Test",
+        headers={"Content-Type": "text/plain"},
+    )
+
+    assert response.status_code == 400
+    assert "Invalid export format" in response.json()["detail"]
+
+
+@pytest.mark.asyncio
+async def test_export_to_format_html_zip() -> None:
+    """Test export_to_format creates zip for HTML format."""
+    from app.strictdoc_controller import export_to_format
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        temp_path = Path(temp_dir)
+        input_file = temp_path / "input.sdoc"
+        output_dir = temp_path / "output"
+        output_dir.mkdir()
+
+        input_file.write_text("[DOCUMENT]\nTitle: Test")
+
+        # Create some HTML output files
+        html_dir = output_dir / "html"
+        html_dir.mkdir()
+        (html_dir / "index.html").write_text("<html>Test</html>")
+
+        with patch("app.strictdoc_controller.export_with_action"):
+            result_file, extension, mime_type = await export_to_format(
+                input_file, output_dir, "html"
+            )
+
+            assert extension == "zip"
+            assert mime_type == "application/zip"
+            assert result_file.suffix == ".zip"
+
+
+@pytest.mark.asyncio
+async def test_export_to_format_invalid_format() -> None:
+    """Test export_to_format with invalid format."""
+    from app.strictdoc_controller import export_to_format
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        temp_path = Path(temp_dir)
+        input_file = temp_path / "input.sdoc"
+        output_dir = temp_path / "output"
+
+        with pytest.raises(HTTPException) as exc_info:
+            await export_to_format(input_file, output_dir, "invalid_format")
+
+        assert exc_info.value.status_code == 400
+        assert "Invalid export format" in str(exc_info.value.detail)
+
+
+class TestControllerIntegration:
+    """Integration tests for controller functions."""
+
+    def test_export_formats_configuration(self) -> None:
+        """Test that EXPORT_FORMATS configuration is properly used."""
+        from app.strictdoc_controller import EXPORT_FORMATS
+
+        # Verify expected formats exist
+        expected_formats = [
+            "html",
+            "pdf",
+            "json",
+            "excel",
+            "doxygen",
+            "rst",
+            "sdoc",
+            "spdx",
+        ]
+        for fmt in expected_formats:
+            if fmt == "pdf":
+                fmt = "html2pdf"  # PDF is exported as html2pdf
+            assert fmt in EXPORT_FORMATS or fmt == "pdf"
+
+        # Verify each format has required keys
+        for fmt, config in EXPORT_FORMATS.items():
+            assert "extension" in config
+            assert "mime_type" in config
+            assert isinstance(config["extension"], str)
+            assert isinstance(config["mime_type"], str)
+
+    def test_sanitization_integration(self) -> None:
+        """Test that sanitization functions are properly integrated."""
+        from app.strictdoc_controller import app
+        from app.sanitization import sanitize_filename, sanitize_for_logging
+
+        # Test that functions are available and working
+        assert sanitize_filename("../test.txt") == "test.txt"
+        assert sanitize_for_logging("test\nlog") == "testlog"
+
+        # Verify app can be created (imports work)
+        assert app is not None
+        assert hasattr(app, "routes")

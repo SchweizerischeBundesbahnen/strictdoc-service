@@ -12,7 +12,6 @@ import time
 from collections.abc import Awaitable, Callable
 from http import HTTPStatus
 from pathlib import Path
-from typing import Any
 
 import uvicorn
 from fastapi import Body, FastAPI, HTTPException, Query
@@ -20,7 +19,6 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
 from starlette.background import BackgroundTask
-from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
 
@@ -31,11 +29,27 @@ from strictdoc.backend.sdoc.reader import SDReader  # type: ignore[import]
 from strictdoc.cli.main import ProjectConfig  # type: ignore[import]
 from strictdoc.core.environment import SDocRuntimeEnvironment  # type: ignore[import]
 
+from app.sanitization import normalize_line_endings, sanitize_filename, sanitize_for_logging
+
 # Create a custom logger
 logger = logging.getLogger(__name__)
 
 # Service version
 SERVICE_VERSION = os.getenv("STRICTDOC_SERVICE_VERSION", "dev")
+
+# Define supported export formats with their file extensions and mime types
+EXPORT_FORMATS = {
+    "doxygen": {"extension": "xml", "mime_type": "text/plain"},
+    "excel": {"extension": "xlsx", "mime_type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"},
+    "html": {"extension": "zip", "mime_type": "application/zip"},
+    "html2pdf": {"extension": "pdf", "mime_type": "application/pdf"},
+    "json": {"extension": "json", "mime_type": "application/json"},
+    "reqif-sdoc": {"extension": "reqif", "mime_type": "application/xml"},
+    "reqifz-sdoc": {"extension": "reqifz", "mime_type": "application/zip"},
+    "rst": {"extension": "rst", "mime_type": "text/x-rst"},
+    "sdoc": {"extension": "sdoc", "mime_type": "text/plain"},
+    "spdx": {"extension": "spdx", "mime_type": "text/plain"},
+}
 
 app = FastAPI(
     title="StrictDoc Service API",
@@ -44,43 +58,13 @@ app = FastAPI(
 )
 
 
-# Custom middleware for format validation
-class FormatValidationMiddleware(BaseHTTPMiddleware):
-    """Middleware for validating export format parameter.
-
-    This middleware intercepts requests to the export endpoint and validates
-    that the format parameter is one of the supported export formats.
-    """
-
-    async def dispatch(self, request: Request, call_next: Callable[[Request], Any]) -> JSONResponse:
-        """Process the request and validate the format parameter.
-
-        Args:
-            request: The incoming request
-            call_next: The next middleware in the chain
-
-        Returns:
-            JSONResponse: The response from the next middleware or an error response
-
-        """
-        # Only intercept requests to the export endpoint
-        if request.url.path == "/export" and request.method == "POST":
-            format_param = request.query_params.get("format")
-            if format_param and format_param.lower() not in EXPORT_FORMATS:
-                return JSONResponse(status_code=HTTPStatus.BAD_REQUEST, content={"detail": f"Invalid export format: {format_param}. Must be one of: {', '.join(EXPORT_FORMATS)}"})
-        return await call_next(request)
-
-
-# Add our custom middleware
-app.add_middleware(FormatValidationMiddleware)
-
-
 # Add exception handler for FastAPI's validation errors
 @app.exception_handler(RequestValidationError)
-async def validation_exception_handler(exc: RequestValidationError) -> JSONResponse:
+async def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
     """Convert 422 validation errors to 400 Bad Request for format validation.
 
     Args:
+        request: The request that caused the exception
         exc: The validation error
 
     Returns:
@@ -101,25 +85,11 @@ async def validation_exception_handler(exc: RequestValidationError) -> JSONRespo
 
     # If it's a format validation error, return a 400 Bad Request
     if format_validation_error:
-        return JSONResponse(status_code=HTTPStatus.BAD_REQUEST, content={"detail": f"Invalid export format. Must be one of: {', '.join(EXPORT_FORMATS)}"})
+        return JSONResponse(status_code=HTTPStatus.BAD_REQUEST, content={"detail": f"Invalid export format. Must be one of: {', '.join(EXPORT_FORMATS.keys())}"})
 
     # For other validation errors, use standard 422 response
     return JSONResponse(status_code=HTTPStatus.UNPROCESSABLE_ENTITY, content={"detail": error_details if error_details else exc.errors()})
 
-
-# Define supported export formats (based on StrictDoc 0.7.0)
-EXPORT_FORMATS = [
-    "html",
-    "html2pdf",
-    "rst",
-    "json",
-    "excel",
-    "reqif-sdoc",
-    "reqifz-sdoc",
-    "sdoc",
-    "doxygen",
-    "spdx",
-]
 
 # Monkey patch PickleCache.get_cached_file_path to handle Path objects
 original_get_cached_file_path = PickleCache.get_cached_file_path
@@ -174,29 +144,6 @@ class ErrorResponse(BaseModel):
     details: str | None = None
 
 
-# Function to sanitize file names
-def sanitize_filename(filename: str) -> str:
-    """Sanitize a filename to prevent path traversal attacks.
-
-    Args:
-        filename: The filename to sanitize
-
-    Returns:
-        str: The sanitized filename
-    """
-    # Remove any path components, only keep the base filename
-    sanitized = Path(filename).name
-
-    # Additional sanitization - keep only alphanumeric chars, underscore, hyphen, and dot
-    sanitized = re.sub(r"[^\w.-]", "_", sanitized)
-
-    # Ensure the filename is not empty or starts with a dot
-    if not sanitized or sanitized.startswith("."):
-        sanitized = "document" + sanitized
-
-    return sanitized
-
-
 # Middleware for logging
 @app.middleware("http")
 async def log_requests(request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
@@ -210,18 +157,9 @@ async def log_requests(request: Request, call_next: Callable[[Request], Awaitabl
         Response: The response from the next middleware
 
     """
-    logger.info(
-        "Request: %s %s",
-        request.method,
-        request.url.path,
-    )
+    logger.info("Request: %s %s", request.method, request.url.path)
     response = await call_next(request)
-    logger.info(
-        "Response: %s %s, Status: %s",
-        request.method,
-        request.url.path,
-        response.status_code,
-    )
+    logger.info("Response: %s %s, Status: %s", request.method, request.url.path, response.status_code)
     return response
 
 
@@ -245,20 +183,6 @@ async def get_version() -> VersionInfo:
     return VersionInfo(python=python_version, strictdoc=strictdoc_version, platform=platform_info, timestamp=timestamp, strictdoc_service=SERVICE_VERSION)
 
 
-def validate_export_format(export_format: str) -> None:
-    """Validate the export format.
-
-    Args:
-        export_format: Format to validate
-
-    Raises:
-        HTTPException: If format is invalid
-
-    """
-    if export_format not in EXPORT_FORMATS:
-        raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=f"Invalid export format: {export_format}. Must be one of: {', '.join(EXPORT_FORMATS)}")
-
-
 def process_sdoc_content(content: str, input_file: Path) -> None:
     """Process and validate SDOC content.
 
@@ -271,7 +195,7 @@ def process_sdoc_content(content: str, input_file: Path) -> None:
 
     """
     # Normalize line endings to Unix style
-    content = content.replace("\r\n", "\n").replace("\r", "\n")
+    content = normalize_line_endings(content)
 
     # Very basic validation of SDOC content
     if "[DOCUMENT]" not in content:
@@ -310,6 +234,7 @@ def process_sdoc_content(content: str, input_file: Path) -> None:
             reqif_import_markup=None,
             config_last_update=None,
             chromedriver=None,
+            test_report_root_dict={},  # Add the missing required parameter
         )
 
         # Monkey patch the config to avoid TypeError in pickle_cache.py
@@ -334,6 +259,38 @@ def process_sdoc_content(content: str, input_file: Path) -> None:
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=error_msg) from e
 
 
+async def run_strictdoc_command(cmd: list[str]) -> None:
+    """Run a StrictDoc command asynchronously.
+
+    Args:
+        cmd: The command to run as a list of strings
+
+    Raises:
+        RuntimeError: If the command fails or returns non-zero exit code
+    """
+    sanitized_cmd = [sanitize_for_logging(arg) for arg in cmd]
+    logging.info("Running command: %s", " ".join(sanitized_cmd))
+
+    try:
+        # Use asyncio.create_subprocess_exec for non-blocking execution
+        process = await asyncio.create_subprocess_exec(*cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
+
+        _, stderr = await process.communicate()
+
+        if process.returncode != 0:
+            stderr_text = stderr.decode("utf-8") if stderr else "Unknown error"
+            logging.error("StrictDoc CLI error: %s", stderr_text)
+            raise RuntimeError(f"StrictDoc command failed: {stderr_text}")
+
+        if stderr:
+            stderr_text = stderr.decode("utf-8")
+            logging.warning("StrictDoc CLI warnings: %s", stderr_text)
+
+    except Exception as e:
+        logging.exception("Command execution failed: %s", str(e))
+        raise RuntimeError(f"Command execution failed: {e!s}") from e
+
+
 async def export_with_action(input_file: Path, output_dir: Path, format_name: str) -> None:
     """Export a document using ExportAction.
 
@@ -347,30 +304,13 @@ async def export_with_action(input_file: Path, output_dir: Path, format_name: st
     output_dir.mkdir(parents=True, exist_ok=True)
 
     try:
-        # For other formats, use asyncio to call the strictdoc command line asynchronously
-        # S603: subprocess call is safe here because input is controlled and not user-supplied
         cmd = ["strictdoc", "export", "--formats", format_name, "--output-dir", str(output_dir), str(input_file)]
-        logging.info("Running command: %s", " ".join(cmd))
-
-        # Use asyncio.create_subprocess_exec for non-blocking execution
-        process = await asyncio.create_subprocess_exec(*cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
-
-        _, stderr = await process.communicate()
-
-        if process.returncode != 0:
-            stderr_text = stderr.decode("utf-8") if stderr else "Unknown error"
-            logging.error("StrictDoc CLI error: %s", stderr_text)
-            raise RuntimeError(f"Export failed: {stderr_text}")
-
-        if stderr:
-            stderr_text = stderr.decode("utf-8")
-            logging.warning("StrictDoc CLI warnings: %s", stderr_text)
+        await run_strictdoc_command(cmd)
     except Exception as e:
         logging.exception("Export failed: %s", str(e))
         raise RuntimeError(f"Export failed: {e!s}") from e
 
 
-# ruff: noqa: C901 the function is too complex
 async def export_to_format(input_file: Path, output_dir: Path, export_format: str) -> tuple[Path, str, str]:
     """Export SDOC to specified format.
 
@@ -390,31 +330,9 @@ async def export_to_format(input_file: Path, output_dir: Path, export_format: st
     if export_format not in EXPORT_FORMATS:
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=f"Invalid export format: {export_format}")
 
-    # Handle format-specific configurations
-    if export_format == "html":
-        extension = "zip"
-        mime_type = "application/zip"
-    elif export_format == "html2pdf":
-        extension = "pdf"
-        mime_type = "application/pdf"
-    elif export_format == "excel":
-        extension = "xlsx"
-        mime_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    elif export_format == "json":
-        extension = "json"
-        mime_type = "application/json"
-    elif export_format == "rst":
-        extension = "rst"
-        mime_type = "text/x-rst"
-    elif export_format == "reqif-sdoc":
-        extension = "reqif"
-        mime_type = "application/xml"
-    elif export_format == "reqifz-sdoc":
-        extension = "reqifz"
-        mime_type = "application/zip"
-    else:
-        extension = export_format
-        mime_type = "text/plain"
+    # Get format-specific configuration from EXPORT_FORMATS
+    extension = EXPORT_FORMATS[export_format]["extension"]
+    mime_type = EXPORT_FORMATS[export_format]["mime_type"]
 
     # Export the document
     try:
@@ -432,19 +350,47 @@ async def export_to_format(input_file: Path, output_dir: Path, export_format: st
         shutil.make_archive(str(zip_base_name), "zip", output_dir)
         return output_zip, extension, mime_type
 
-    # Find the exported file
-    pattern = "**/*.pdf" if export_format == "pdf" else f"*.{extension}"
-    exported_files = list(output_dir.glob(pattern))
+    # Find the exported file - handle special cases
+    exported_file = find_exported_file(output_dir, export_format, extension)
+
+    return exported_file, extension, mime_type
+
+
+def find_exported_file(output_dir: Path, export_format: str, extension: str) -> Path:
+    """Find the exported file in the output directory.
+
+    Args:
+        output_dir: Directory where exported files are located
+        export_format: The export format name
+        extension: The expected file extension from EXPORT_FORMATS
+
+    Returns:
+        Path: Path to the found exported file
+
+    Raises:
+        HTTPException: If no exported file is found
+
+    """
+    # Handle special cases for file search patterns
+    if export_format in {"reqif-sdoc", "reqifz-sdoc"}:
+        # These formats have different extension patterns from their format names
+        search_pattern = "**/*.reqif" if export_format == "reqif-sdoc" else "**/*.reqifz"
+        exported_files = list(output_dir.glob(search_pattern))
+        if not exported_files:
+            # Try with the extension from EXPORT_FORMATS
+            exported_files = list(output_dir.glob(f"**/*.{extension}"))
+    else:
+        # Use the extension from EXPORT_FORMATS for all formats (including html2pdf -> pdf)
+        exported_files = list(output_dir.glob(f"**/*.{extension}"))
 
     if not exported_files:
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=f"No {extension} file found in output after export")
 
     logging.info("Found exported file: %s", exported_files[0])
-    return exported_files[0], extension, mime_type
+    return exported_files[0]
 
 
 @app.post("/export", response_class=FileResponse)
-# ruff: noqa: PLR0912, PLR0915, C901  # Too many branches/statements, function is too complex
 async def export_document(
     sdoc_content: str = Body(..., media_type="text/plain", description="SDOC content to export"),
     format: str = Query("html", description="Export format"),
@@ -462,21 +408,19 @@ async def export_document(
 
     """
     # Sanitize user input for logging
-    sanitized_format = format.replace("\n", "").replace("\r", "")
-    sanitized_file_name = file_name.replace("\n", "").replace("\r", "")
+    sanitized_format = sanitize_for_logging(format)
+    sanitized_file_name = sanitize_for_logging(file_name)
     logging.info("Export requested for format: %r, filename: %r", sanitized_format, sanitized_file_name)
 
     # Validate format against allowlist
     export_format = format.lower()
-    if export_format not in EXPORT_FORMATS:
-        raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=f"Invalid export format: {export_format}. Must be one of: {', '.join(EXPORT_FORMATS)}")
+    # Note: format validation is handled in export_to_format function
 
     # Sanitize filename to prevent path traversal
     sanitized_file_name = sanitize_filename(file_name)
     if sanitized_file_name != file_name:
         # Use sanitized_file_name instead of raw file_name to prevent log injection
         logging.warning("Sanitized filename from %r to %r", sanitized_file_name, sanitized_file_name)
-        file_name = sanitized_file_name
 
     # Basic validation of SDOC content
     if not sdoc_content or "[DOCUMENT]" not in sdoc_content:
@@ -498,99 +442,8 @@ async def export_document(
 
             logging.info("Saved SDOC content to %s", input_file)
 
-            # Run StrictDoc export using the CLI asynchronously
-            cmd = ["strictdoc", "export", "--formats", export_format, "--output-dir", str(output_dir), str(input_file)]
-
-            logging.info("Running StrictDoc export command: %s", " ".join(cmd))
-
-            # Use asyncio.create_subprocess_exec instead of subprocess.run
-            process = await asyncio.create_subprocess_exec(*cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
-
-            _, stderr = await process.communicate()
-
-            if process.returncode != 0:
-                # Properly decode the stderr bytes
-                stderr_text = stderr.decode("utf-8") if stderr else "Unknown error"
-                logging.error("StrictDoc export failed: %s", stderr_text)
-                raise RuntimeError(f"StrictDoc export failed: {stderr_text}")
-
-            # Determine the exported file path based on format
-            export_file = None
-            media_type = "application/octet-stream"
-            # Map export formats to their corresponding file extensions
-            EXPORT_FORMAT_EXTENSIONS = {
-                "html": "zip",
-                "html2pdf": "pdf",
-                "json": "json",
-                "rst": "rst",
-                "reqif-sdoc": "reqif",
-                "reqifz-sdoc": "reqifz",
-                "sdoc": "sdoc",
-                "doxygen": "xml",
-                "spdx": "spdx",
-                "excel": "xlsx",
-            }
-
-            # Derive the extension from the validated format
-            extension = EXPORT_FORMAT_EXTENSIONS.get(export_format)
-            if not extension:
-                raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=f"Invalid export format: {export_format}. Must be one of: {', '.join(EXPORT_FORMAT_EXTENSIONS.keys())}")
-
-            if export_format == "html":
-                # For HTML, create a zip of the output directory
-                output_zip = temp_dir_path / "output.zip"
-                shutil.make_archive(str(output_zip).replace(".zip", ""), "zip", output_dir)
-                export_file = output_zip
-                media_type = "application/zip"
-            elif export_format == "html2pdf":
-                # PDF files can be in output directory
-                pdf_files = list(output_dir.glob("**/*.pdf"))
-                if not pdf_files:
-                    raise RuntimeError("No PDF file found in output after export")
-                export_file = pdf_files[0]
-                media_type = "application/pdf"
-                extension = "pdf"
-            elif export_format == "excel":
-                # Excel files have .xlsx extension
-                excel_files = list(output_dir.glob("**/*.xlsx"))
-                if not excel_files:
-                    raise RuntimeError("No Excel file found in output after export")
-                export_file = excel_files[0]
-                media_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                extension = "xlsx"
-            elif export_format in ["json", "rst", "reqif-sdoc", "reqifz-sdoc", "sdoc", "doxygen", "spdx"]:
-                # Search for any file with the format's extension
-                search_pattern = f"**/*.{export_format}"
-                if export_format in {"reqif-sdoc", "reqifz-sdoc"}:
-                    # These have different extension patterns
-                    search_pattern = "**/*.reqif" if export_format == "reqif-sdoc" else "**/*.reqifz"
-
-                found_files = list(output_dir.glob(search_pattern))
-                if not found_files:
-                    # Try with just the extension
-                    found_files = list(output_dir.glob(f"**/*.{export_format.split('-')[0]}"))
-
-                if not found_files:
-                    raise RuntimeError(f"No {export_format} file found in output after export")
-
-                export_file = found_files[0]
-
-                # Set media type based on format
-                if export_format == "json":
-                    media_type = "application/json"
-                elif export_format == "rst":
-                    media_type = "text/x-rst"
-                    extension = "rst"
-                elif export_format in ["reqif-sdoc", "reqifz-sdoc"]:
-                    media_type = "application/xml" if export_format == "reqif-sdoc" else "application/zip"
-                    extension = export_format.split("-")[0]
-                else:
-                    # Default for other formats
-                    media_type = "text/plain"
-                    extension = export_format
-
-            if not export_file:
-                raise RuntimeError(f"No {export_format} file found in output after export")
+            # Use the consolidated export_to_format function
+            export_file, extension, media_type = await export_to_format(input_file, output_dir, export_format)
 
             # Create a secure path for the temporary file in a controlled directory
             temp_dir_obj = tempfile.gettempdir()
@@ -606,8 +459,8 @@ async def export_document(
             # Copy the file
             shutil.copy2(export_file, persistent_temp_file)
 
-            sanitized_format = export_format.replace("\n", "").replace("\r", "")
-            sanitized_persistent_temp_file = str(persistent_temp_file).replace("\n", "").replace("\r", "")
+            sanitized_format = sanitize_for_logging(export_format)
+            sanitized_persistent_temp_file = sanitize_for_logging(str(persistent_temp_file))
             logging.info("Exported %s file to %s", sanitized_format, sanitized_persistent_temp_file)
 
             # Create cleanup function

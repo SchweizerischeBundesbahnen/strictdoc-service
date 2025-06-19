@@ -31,7 +31,7 @@ docker = "7.1.0"
 pytest = "8.4.1"
 pytest-cov = "6.2.1"
 pytest-mock = "3.14.1"
-pytest-asyncio = "1.0.0"
+pytest-asyncio = "0.24.0"
 pytest-timeout = "2.4.0"
 pytest-randomly = "3.16.0"
 pytest-xdist = "3.7.0"
@@ -91,3 +91,10 @@ disallow_untyped_defs = true
 exclude = "tests/.*"
 install_types = true
 non_interactive = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
