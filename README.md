@@ -46,6 +46,7 @@ To start the StrictDoc service container, execute:
 
 ```bash
 docker run --detach \
+  --init \
   --publish 9083:9083 \
   --name strictdoc-service \
   ghcr.io/schweizerischebundesbahnen/strictdoc-service:latest
@@ -105,6 +106,7 @@ To start the Docker container with your custom-built image:
 
 ```bash
 docker run --detach \
+  --init \
   --publish 9083:9083 \
   --name strictdoc-service \
   strictdoc-service:0.0.0
@@ -120,67 +122,9 @@ docker container stop strictdoc-service
 
 ### Testing
 
-The project has a comprehensive test suite organized into several categories:
+See [tests/README.md](tests/README.md) for detailed test organization and instructions.
 
-#### Quick Start
-
-```bash
-# Run all tests
-poetry run pytest
-```
-```bash
-# Run with coverage
-poetry run pytest --cov=src tests/ --cov-report=term-missing
-```
-```bash
-# Run pre-commit hooks
-poetry run pre-commit run --all
-```
-
-#### Test Categories
-
-1. **Export Tests** (`tests/export/`)
-   - Unit tests with mocked responses
-   - Integration tests with real Docker container
-   - Comprehensive format testing (HTML, JSON, Excel, ReqIF, etc.)
-
-2. **Docker Tests**
-   ```bash
-   # Container structure tests
-   container-structure-test test --image strictdoc-service:0.0.0 --config ./tests/container/container-structure-test.yaml
-   ```
-
-3. **Development Testing**
-   ```bash
-   # Run tox environments
-   poetry run tox
-   ```
-   ```bash
-   # Run specific test file
-   poetry run pytest tests/export/test_unit.py -v
-   ```
-
-#### Shell Tests
-
-The project includes shell-based tests for validating the StrictDoc service API functionality:
-
-```bash
-# Run the shell-based API test suite
-./tests/shell/test_strictdoc_service.sh
-```
-
-This script will:
-1. Build a test Docker image
-2. Start the StrictDoc service container
-3. Test the version endpoint
-4. Test all supported export formats (JSON, HTML, ReqIF, Excel, RST, SDOC, ReqIFZ)
-5. Validate format-specific responses
-6. Test error handling scenarios
-7. Clean up all resources when complete
-
-The shell test is especially useful for end-to-end validation of the service's export functionality with real HTTP requests. It creates sample files for each export format that can be manually inspected if needed.
-
-### Access service
+## Access service
 
 StrictDoc Service provides the following endpoints:
 
@@ -239,27 +183,3 @@ StrictDoc Service provides the following endpoints:
 > ```
 
 </details>
-
-## Test Organization
-
-The test suite is organized as follows:
-
-### Export Tests (`tests/export/`)
-
-- `conftest.py`: Shared fixtures and utilities for export tests
-  - Docker container setup/teardown
-  - Test parameters and session management
-  - Common test data (sample SDOC content)
-
-- `test_unit.py`: Unit tests with mocked responses
-  - Export format tests (HTML, JSON, Excel, ReqIF, ReqIFZ, RST, SDOC)
-  - PDF export tests
-  - Error handling tests
-  - Input validation tests
-
-- `test_integration.py`: Integration tests using real Docker container
-  - Version endpoint test
-  - Export format tests with real responses
-  - Format-specific content validation
-  - Error handling with real service
-  - Connection error handling

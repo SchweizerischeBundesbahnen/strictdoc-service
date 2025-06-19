@@ -16,4 +16,4 @@ commandTests:
   - name: StrictDoc version is correct
     command: strictdoc
     args: [--version]
-    expectedOutput: [0.8.*]
+    expectedOutput: [0.9.*]
