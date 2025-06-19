@@ -51,8 +51,7 @@ ENV PYTHONUNBUFFERED=1 \
 WORKDIR ${WORKING_DIR}
 
 # Create build timestamp
-RUN BUILD_TIMESTAMP="$(date -u +'%Y-%m-%dT%H:%M:%SZ')" && \
-    echo "${BUILD_TIMESTAMP}" > "${WORKING_DIR}/.build_timestamp"
+RUN BUILD_TIMESTAMP="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
 
 # Copy Python dependencies from builder stage
 COPY --from=builder /usr/local/lib/python3.13/site-packages/ /usr/local/lib/python3.13/site-packages/
