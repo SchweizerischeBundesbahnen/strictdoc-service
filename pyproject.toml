@@ -28,7 +28,7 @@ tox = "4.27.0"
 docker = "7.1.0"
 pytest = "8.4.1"
 pytest-mock = "3.14.1"
-pytest-asyncio = "0.26.0"
+pytest-asyncio = "1.0.0"
 httpx = "0.28.1"
 
 [build-system]
