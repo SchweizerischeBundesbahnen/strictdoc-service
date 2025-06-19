@@ -268,7 +268,8 @@ async def run_strictdoc_command(cmd: list[str]) -> None:
     Raises:
         RuntimeError: If the command fails or returns non-zero exit code
     """
-    logging.info("Running command: %s", " ".join(cmd))
+    sanitized_cmd = [sanitize_for_logging(arg) for arg in cmd]
+    logging.info("Running command: %s", " ".join(sanitized_cmd))
 
     try:
         # Use asyncio.create_subprocess_exec for non-blocking execution
