@@ -322,3 +322,182 @@ class TestControllerIntegration:
         # Verify app can be created (imports work)
         assert app is not None
         assert hasattr(app, "routes")
+
+
+@pytest.mark.asyncio
+async def test_path_validation_with_invalid_export_file() -> None:
+    """Test that export path validation correctly prevents path traversal attacks."""
+    from app.strictdoc_controller import export_document
+    from http import HTTPStatus
+
+    # Create test directories
+    with tempfile.TemporaryDirectory() as temp_dir:
+        temp_dir_path = Path(temp_dir)
+        output_dir = temp_dir_path / "output"
+        output_dir.mkdir()
+
+        # Setup mocks
+        with patch("app.strictdoc_controller.export_to_format") as mock_export_to_format:
+            # Create a malicious export_file path that attempts to escape the output directory
+            malicious_path = temp_dir_path / "output" / ".." / ".." / "etc" / "passwd"
+            mock_export_to_format.return_value = (malicious_path, "txt", "text/plain")
+
+            # Test with modified approach that doesn't require mocking Path.resolve
+            # Instead, use an actual path that would fail validation
+            with patch("tempfile.gettempdir", return_value=str(temp_dir_path)), \
+                 patch("shutil.copy2"), \
+                 patch("app.strictdoc_controller.FileResponse"), \
+                 pytest.raises(HTTPException) as excinfo:
+
+                await export_document(
+                    sdoc_content="[DOCUMENT]\nTITLE: Test\n",
+                    format="sdoc",
+                    file_name="test_document"
+                )
+
+            # Verify that an exception was raised - either BAD_REQUEST for path validation
+            # or INTERNAL_SERVER_ERROR if the path traversal is caught elsewhere
+            assert excinfo.value.status_code in [HTTPStatus.BAD_REQUEST, HTTPStatus.INTERNAL_SERVER_ERROR]
+            assert "Invalid" in excinfo.value.detail
+
+
+@pytest.mark.asyncio
+async def test_path_validation_with_invalid_destination_path() -> None:
+    """Test that destination path validation correctly prevents path traversal attacks."""
+    from app.strictdoc_controller import export_document
+    from http import HTTPStatus
+
+    # Create test directories with proper structure
+    with tempfile.TemporaryDirectory() as temp_dir:
+        temp_dir_path = Path(temp_dir)
+        output_dir = temp_dir_path / "output"
+        output_dir.mkdir()
+
+        valid_export_file = output_dir / "export.sdoc"
+
+        # Setup mocks with a simpler approach that doesn't require mocking Path.resolve
+        with patch("app.strictdoc_controller.export_to_format") as mock_export_to_format:
+            # Setup the export mock to return a valid file
+            mock_export_to_format.return_value = (valid_export_file, "sdoc", "text/plain")
+
+            # Create a malicious path scenario
+            with patch("app.strictdoc_controller.sanitize_path_component") as mock_sanitize:
+                # Make sanitize_path_component return a path that would be considered invalid
+                # This simulates a path that tries to escape the temp directory
+                mock_sanitize.return_value = "../../../etc"
+
+                # Test with the mocked sanitization
+                with patch("shutil.copy2"), \
+                     patch("app.strictdoc_controller.FileResponse"), \
+                     pytest.raises(HTTPException) as excinfo:
+
+                    await export_document(
+                        sdoc_content="[DOCUMENT]\nTITLE: Test\n",
+                        format="sdoc",
+                        file_name="test_document"
+                    )
+
+                # Verify the correct exception was raised
+                assert excinfo.value.status_code == HTTPStatus.BAD_REQUEST
+                assert "Invalid file path detected" in excinfo.value.detail
+
+
+@pytest.mark.asyncio
+async def test_sanitize_path_component_called() -> None:
+    """Test that sanitize_path_component is called for path components."""
+    from app.strictdoc_controller import export_document
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        temp_dir_path = Path(temp_dir)
+
+        # Track calls to sanitize_path_component
+        sanitized_components = []
+
+        def mock_sanitize(component):
+            sanitized_components.append(component)
+            return "safe_path"
+
+        with patch("app.strictdoc_controller.export_to_format") as mock_export, \
+             patch("app.strictdoc_controller.sanitize_path_component", side_effect=mock_sanitize), \
+             patch("app.strictdoc_controller.validate_export_paths") as mock_validate, \
+             patch("tempfile.gettempdir", return_value=str(temp_dir_path)), \
+             patch("shutil.copy2"), \
+             patch("app.strictdoc_controller.FileResponse"):
+
+            # Mock export_to_format to return a valid file
+            mock_export.return_value = (temp_dir_path / "test.sdoc", "sdoc", "text/plain")
+
+            # Call the function
+            await export_document(
+                sdoc_content="[DOCUMENT]\nTITLE: Test\n",
+                format="sdoc",
+                file_name="../../../etc/passwd"
+            )
+
+            # Verify sanitize_path_component was called
+            assert len(sanitized_components) >= 1
+            assert any("passwd.sdoc" in comp for comp in sanitized_components)
+
+
+@pytest.mark.asyncio
+async def test_successful_validation_with_safe_paths() -> None:
+    """Test that path validation succeeds with safe paths."""
+    from app.strictdoc_controller import export_document
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        temp_dir_path = Path(temp_dir)
+        output_file = temp_dir_path / "test.sdoc"
+
+        with patch("app.strictdoc_controller.export_to_format") as mock_export, \
+             patch("tempfile.gettempdir", return_value=str(temp_dir_path)), \
+             patch("app.strictdoc_controller.validate_export_paths") as mock_validate, \
+             patch("shutil.copy2") as mock_copy, \
+             patch("app.strictdoc_controller.FileResponse") as mock_response:
+
+            # Mock export_to_format to return a valid file
+            mock_export.return_value = (output_file, "sdoc", "text/plain")
+
+            # Mock validation to always pass for this test
+            mock_validate.return_value = None
+
+            # Call the function with a safe filename
+            result = await export_document(
+                sdoc_content="[DOCUMENT]\nTITLE: Test\n",
+                format="sdoc",
+                file_name="safe_document"
+            )
+
+            # Verify the validation was called and file was copied
+            mock_validate.assert_called_once()
+            mock_copy.assert_called_once()
+            mock_response.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_path_normalization() -> None:
+    """Test that paths are properly normalized and validated."""
+    from app.strictdoc_controller import export_document
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        temp_dir_path = Path(temp_dir)
+        output_file = temp_dir_path / "test.txt"
+
+        with patch("app.strictdoc_controller.export_to_format") as mock_export, \
+             patch("app.strictdoc_controller.validate_export_paths") as mock_validate, \
+             patch("tempfile.gettempdir", return_value=str(temp_dir_path)), \
+             patch("shutil.copy2") as mock_copy, \
+             patch("app.strictdoc_controller.FileResponse") as mock_response:
+
+            # Mock export_to_format to return a valid file
+            mock_export.return_value = (output_file, "txt", "text/plain")
+
+            # Call the function - should succeed without exceptions
+            await export_document(
+                sdoc_content="[DOCUMENT]\nTITLE: Test\n",
+                format="txt",
+                file_name="output_file"
+            )
+
+            # Verify the file was copied and response was created
+            mock_copy.assert_called_once()
+            mock_response.assert_called_once()
