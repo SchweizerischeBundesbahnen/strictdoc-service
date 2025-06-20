@@ -518,12 +518,23 @@ def validate_export_paths(persistent_temp_file: Path, temp_dir_resolved: Path, e
     export_file_resolved = export_file.resolve()
     output_dir_resolved = output_dir.resolve()
 
+    # Convert paths to strings and sanitize them for potential logging
+    safe_persistent_temp_file = sanitize_for_logging(str(persistent_temp_file))
+    safe_temp_dir_resolved = sanitize_for_logging(str(temp_dir_resolved))
+    safe_export_file_resolved = sanitize_for_logging(str(export_file_resolved))
+    safe_output_dir_resolved = sanitize_for_logging(str(output_dir_resolved))
+
+    # For debugging - use sanitized path strings
+    logging.debug("Validating paths: temp_file=%s, temp_dir=%s", safe_persistent_temp_file, safe_temp_dir_resolved)
+
     # Ensure the resolved path is strictly within the temporary directory
     if not str(persistent_temp_file).startswith(str(temp_dir_resolved) + os.sep):
+        logging.warning("Invalid file path detected: %s not in %s", safe_persistent_temp_file, safe_temp_dir_resolved)
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail="Invalid file path detected.")
 
     # Validate the export_file path is within the expected output directory
     if not str(export_file_resolved).startswith(str(output_dir_resolved) + os.sep):
+        logging.warning("Invalid export path detected: %s not in %s", safe_export_file_resolved, safe_output_dir_resolved)
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail="Invalid export file path detected.")
 
 
