@@ -429,8 +429,10 @@ async def export_document(
     # Sanitize filename to prevent path traversal
     sanitized_file_name = sanitize_filename(file_name)
     if sanitized_file_name != file_name:
-        # Use sanitized_file_name instead of raw file_name to prevent log injection
-        logging.warning("Sanitized filename from %r to %r", sanitized_file_name, sanitized_file_name)
+        # Log both the original (but sanitized for logging) and sanitized filenames
+        safe_original_name = sanitize_for_logging(file_name)
+        safe_sanitized_name = sanitize_for_logging(sanitized_file_name)
+        logging.warning("Sanitized filename from %r to %r", safe_original_name, safe_sanitized_name)
 
     # Basic validation of SDOC content
     if not sdoc_content or "[DOCUMENT]" not in sdoc_content:
