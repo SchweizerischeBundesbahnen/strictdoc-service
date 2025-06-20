@@ -28,7 +28,7 @@ from strictdoc.backend.sdoc.reader import SDReader  # type: ignore[import]
 from strictdoc.cli.main import ProjectConfig  # type: ignore[import]
 from strictdoc.core.environment import SDocRuntimeEnvironment  # type: ignore[import]
 
-from app.sanitization import normalize_line_endings, sanitize_filename, sanitize_for_logging
+from app.sanitization import normalize_line_endings, sanitize_filename, sanitize_for_logging, sanitize_path_component
 
 # Create a custom logger
 logger = logging.getLogger(__name__)
@@ -242,9 +242,9 @@ def process_sdoc_content(content: str, input_file: Path) -> None:
             reqif_import_markup=None,
             config_last_update=None,
             chromedriver=None,
-            test_report_root_dict={},  # Add the missing required parameter
-            source_nodes=[],  # Added missing required parameter
-            section_behavior={},  # Added missing required parameter
+            test_report_root_dict={},
+            source_nodes=[],
+            section_behavior={},
         )
 
         # Monkey patch the config to avoid TypeError in pickle_cache.py
@@ -354,8 +354,8 @@ async def export_to_format(input_file: Path, output_dir: Path, export_format: st
 
     # For HTML, we need to zip the output directory
     if export_format == "html":
-        # Use a secure path for the zip output
-        zip_base_name = input_file.parent / "output"
+        # Use a secure path for the zip output - place it in the output_dir instead of input file's parent
+        zip_base_name = output_dir / "output"
         output_zip = Path(f"{zip_base_name}.zip")
         shutil.make_archive(str(zip_base_name), "zip", output_dir)
         return output_zip, extension, mime_type
@@ -458,13 +458,20 @@ async def export_document(
             # Create a secure path for the temporary file in a controlled directory
             temp_dir_obj = tempfile.gettempdir()
             secure_filename = f"{sanitized_file_name}.{extension}"
+
+            # Use sanitize_path_component for additional safety on path components
+            temp_dir_obj = sanitize_path_component(str(temp_dir_obj))
+            secure_filename = sanitize_path_component(secure_filename)
+
+            # Ensure the sanitized temp directory exists
+            Path(temp_dir_obj).mkdir(parents=True, exist_ok=True)
+
+            # Resolve the temporary directory path once
+            temp_dir_resolved = Path(temp_dir_obj).resolve()
             persistent_temp_file = Path(temp_dir_obj) / secure_filename
 
-            # Normalize and validate the path
-            persistent_temp_file = persistent_temp_file.resolve()
-            # Ensure the resolved path is strictly within the temporary directory
-            if not str(persistent_temp_file).startswith(str(Path(temp_dir_obj).resolve()) + os.sep):
-                raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail="Invalid file path detected.")
+            # Validate all paths to prevent path traversal
+            validate_export_paths(persistent_temp_file, temp_dir_resolved, export_file, output_dir)
 
             # Copy the file
             shutil.copy2(export_file, persistent_temp_file)
@@ -492,6 +499,36 @@ async def export_document(
         raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail=f"Export failed: {e!s}") from e
 
 
+def validate_export_paths(persistent_temp_file: Path, temp_dir_resolved: Path, export_file: Path, output_dir: Path) -> None:
+    """Validate file paths to prevent path traversal attacks.
+
+    Args:
+        persistent_temp_file: Path to where the file will be stored temporarily
+        temp_dir_resolved: Resolved path of the temporary directory
+        export_file: Path to the exported file
+        output_dir: Path to the output directory
+
+    Raises:
+        HTTPException: If any of the paths are invalid
+    """
+    # Normalize and validate the paths
+    persistent_temp_file = persistent_temp_file.resolve()
+    export_file_resolved = export_file.resolve()
+    output_dir_resolved = output_dir.resolve()
+
+    # Ensure the resolved path is strictly within the temporary directory
+    if not str(persistent_temp_file).startswith(str(temp_dir_resolved) + os.sep):
+        raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail="Invalid file path detected.")
+
+    # Validate the export_file path is within the expected output directory
+    if not str(export_file_resolved).startswith(str(output_dir_resolved) + os.sep):
+        raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail="Invalid export file path detected.")
+
+
 def start_server(port: int) -> None:
-    """Start the FastAPI server."""
+    """Start the FastAPI server.
+
+    Args:
+        port: The port number to run the server on
+    """
     uvicorn.run(app, host="127.0.0.1", port=port, log_level="info")
