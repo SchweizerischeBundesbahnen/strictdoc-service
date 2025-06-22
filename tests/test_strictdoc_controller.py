@@ -313,10 +313,11 @@ class TestControllerIntegration:
     def test_sanitization_integration(self) -> None:
         """Test that sanitization functions are properly integrated."""
         from app.strictdoc_controller import app
-        from app.sanitization import sanitize_filename, sanitize_for_logging
+        from app.sanitization import sanitize_for_logging
+        from pathvalidate import sanitize_filename
 
         # Test that functions are available and working
-        assert sanitize_filename("../test.txt") == "test.txt"
+        assert sanitize_filename("../test.txt") == "..test.txt"
         assert sanitize_for_logging("test\nlog") == "testlog"
 
         # Verify app can be created (imports work)
@@ -381,21 +382,14 @@ async def test_path_validation_with_invalid_destination_path() -> None:
             mock_export_to_format.return_value = (valid_export_file, "sdoc", "text/plain")
 
             # Create a malicious path scenario
-            with patch("app.strictdoc_controller.sanitize_path_component") as mock_sanitize:
-                # Make sanitize_path_component return a path that would be considered invalid
+            with patch("app.strictdoc_controller.sanitize_filename") as mock_sanitize:
+                # Make sanitize_filename return a path that would be considered invalid
                 # This simulates a path that tries to escape the temp directory
                 mock_sanitize.return_value = "../../../etc"
 
                 # Test with the mocked sanitization
-                with patch("shutil.copy2"), \
-                     patch("app.strictdoc_controller.FileResponse"), \
-                     pytest.raises(HTTPException) as excinfo:
-
-                    await export_document(
-                        sdoc_content="[DOCUMENT]\nTITLE: Test\n",
-                        format="sdoc",
-                        file_name="test_document"
-                    )
+                with patch("shutil.copy2"), patch("app.strictdoc_controller.FileResponse"), pytest.raises(HTTPException) as excinfo:
+                    await export_document(sdoc_content="[DOCUMENT]\nTITLE: Test\n", format="sdoc", file_name="test_document")
 
                 # Verify the correct exception was raised
                 assert excinfo.value.status_code == HTTPStatus.BAD_REQUEST
@@ -403,40 +397,27 @@ async def test_path_validation_with_invalid_destination_path() -> None:
 
 
 @pytest.mark.asyncio
-async def test_sanitize_path_component_called() -> None:
-    """Test that sanitize_path_component is called for path components."""
+async def test_sanitize_filename_is_called() -> None:
+    """Test that sanitize_filename is called for path components."""
     from app.strictdoc_controller import export_document
 
     with tempfile.TemporaryDirectory() as temp_dir:
         temp_dir_path = Path(temp_dir)
 
-        # Track calls to sanitize_path_component
-        sanitized_components = []
-
-        def mock_sanitize(component):
-            sanitized_components.append(component)
-            return "safe_path"
-
-        with patch("app.strictdoc_controller.export_to_format") as mock_export, \
-             patch("app.strictdoc_controller.sanitize_path_component", side_effect=mock_sanitize), \
-             patch("app.strictdoc_controller.validate_export_paths") as mock_validate, \
-             patch("tempfile.gettempdir", return_value=str(temp_dir_path)), \
-             patch("shutil.copy2"), \
-             patch("app.strictdoc_controller.FileResponse"):
-
+        with patch("app.strictdoc_controller.export_to_format") as mock_export, patch(
+            "app.strictdoc_controller.sanitize_filename"
+        ) as mock_sanitize, patch("app.strictdoc_controller.validate_export_paths"), patch(
+            "tempfile.gettempdir", return_value=str(temp_dir_path)
+        ), patch("shutil.copy2"), patch("app.strictdoc_controller.FileResponse"):
             # Mock export_to_format to return a valid file
             mock_export.return_value = (temp_dir_path / "test.sdoc", "sdoc", "text/plain")
+            mock_sanitize.return_value = "safe_filename"
 
             # Call the function
-            await export_document(
-                sdoc_content="[DOCUMENT]\nTITLE: Test\n",
-                format="sdoc",
-                file_name="../../../etc/passwd"
-            )
+            await export_document(sdoc_content="[DOCUMENT]\nTITLE: Test\n", format="sdoc", file_name="../../../etc/passwd")
 
-            # Verify sanitize_path_component was called
-            assert len(sanitized_components) >= 1
-            assert any("passwd.sdoc" in comp for comp in sanitized_components)
+            # Verify sanitize_filename was called
+            mock_sanitize.assert_called_once_with("../../../etc/passwd", replacement_text="_")
 
 
 @pytest.mark.asyncio

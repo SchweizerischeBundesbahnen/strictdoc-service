@@ -1,55 +1,12 @@
 """Tests for the sanitization module."""
 
 import pytest
+from pathvalidate import sanitize_filename
 
 from app.sanitization import (
-    sanitize_filename,
     sanitize_for_logging,
     normalize_line_endings,
-    sanitize_path_component,
 )
-
-
-class TestSanitizeFilename:
-    """Test cases for sanitize_filename function."""
-
-    def test_normal_filename(self) -> None:
-        """Test that normal filenames are preserved."""
-        assert sanitize_filename("document.txt") == "document.txt"
-        assert sanitize_filename("my-file_123.pdf") == "my-file_123.pdf"
-
-    def test_path_traversal_prevention(self) -> None:
-        """Test that path traversal attacks are prevented."""
-        assert sanitize_filename("../../../etc/passwd") == "passwd"
-        # Windows path separators get converted to underscores, and double dots remain
-        assert sanitize_filename("..\\..\\windows\\system32") == "document.._.._windows_system32"
-        assert sanitize_filename("/absolute/path/file.txt") == "file.txt"
-
-    def test_invalid_characters_replacement(self) -> None:
-        """Test that invalid characters are replaced with underscores."""
-        # Check actual behavior: some special characters get replaced with single underscores
-        assert sanitize_filename("file<>:\"|?*.txt") == "file_______.txt"
-        assert sanitize_filename("file with spaces.txt") == "file_with_spaces.txt"
-        assert sanitize_filename("file\nwith\rlinebreaks.txt") == "file_with_linebreaks.txt"
-
-    def test_empty_or_hidden_filenames(self) -> None:
-        """Test handling of empty or hidden filenames."""
-        assert sanitize_filename("") == "document"
-        assert sanitize_filename(".hidden") == "document.hidden"
-        assert sanitize_filename("...") == "document..."
-
-    def test_unicode_characters(self) -> None:
-        """Test handling of unicode characters."""
-        assert sanitize_filename("file_ñáéíóú.txt") == "file_ñáéíóú.txt"
-        assert sanitize_filename("文档.txt") == "文档.txt"
-
-    def test_very_long_filename(self) -> None:
-        """Test handling of very long filenames."""
-        long_name = "a" * 300 + ".txt"
-        result = sanitize_filename(long_name)
-        # Should keep the extension and base name
-        assert result.endswith(".txt")
-        assert "a" in result
 
 
 class TestSanitizeForLogging:
@@ -120,55 +77,16 @@ class TestNormalizeLineEndings:
         assert normalize_line_endings(text) == text
 
 
-class TestSanitizePathComponent:
-    """Test cases for sanitize_path_component function."""
-
-    def test_normal_path_component(self) -> None:
-        """Test that normal path components are preserved."""
-        assert sanitize_path_component("folder") == "folder"
-        assert sanitize_path_component("my-folder_123") == "my-folder_123"
-
-    def test_directory_traversal_prevention(self) -> None:
-        """Test that directory traversal is prevented."""
-        assert sanitize_path_component("..") == "_"
-        assert sanitize_path_component("../..") == "_"
-        assert sanitize_path_component("folder/../other") == "folder_other"
-
-    def test_path_separators_removal(self) -> None:
-        """Test that path separators are handled."""
-        assert sanitize_path_component("folder/subfolder") == "folder/subfolder"
-        assert sanitize_path_component("folder\\subfolder") == "folder\\subfolder"
-
-    def test_leading_trailing_dots_slashes(self) -> None:
-        """Test that leading/trailing dangerous characters are removed."""
-        # Leading ./ gets stripped, and remaining becomes _ due to regex
-        assert sanitize_path_component("./folder") == "_folder"
-        assert sanitize_path_component("folder/") == "folder"
-        assert sanitize_path_component("\\folder\\") == "folder"
-
-    def test_empty_component(self) -> None:
-        """Test handling of empty component."""
-        assert sanitize_path_component("") == "safe_component"
-        # Whitespace gets stripped, resulting in empty string, then becomes safe_component
-        assert sanitize_path_component("   ") == "safe_component"
-
-    def test_dots_only(self) -> None:
-        """Test handling of dots-only components."""
-        assert sanitize_path_component(".") == "safe_component"
-        # Three dots get reduced to underscore due to regex replacement
-        assert sanitize_path_component("...") == "_"
-
-
 class TestSanitizationIntegration:
     """Integration tests for sanitization functions."""
 
     def test_filename_with_logging_sanitization(self) -> None:
         """Test combining filename and logging sanitization."""
         dangerous_filename = "../../../etc/passwd\nwith\rlinebreaks"
-        safe_filename = sanitize_filename(dangerous_filename)
+        safe_filename = sanitize_filename(dangerous_filename, replacement_text="_")
         safe_for_log = sanitize_for_logging(dangerous_filename)
 
-        assert safe_filename == "passwd_with_linebreaks"
+        assert safe_filename == ".._.._.._etc_passwd_with_linebreaks"
         assert safe_for_log == "../../../etc/passwdwithlinebreaks"
 
     def test_content_processing_workflow(self) -> None:
@@ -185,7 +103,7 @@ class TestSanitizationIntegration:
         # Scenario 1: User uploads file with dangerous name
         user_filename = "../../secret\nfile.pdf"
         safe_name = sanitize_filename(user_filename)
-        assert safe_name == "secret_file.pdf"
+        assert safe_name == "....secretfile.pdf"
 
         # Scenario 2: Logging user input safely
         user_format = "html\nmalicious\rcode"
@@ -200,11 +118,11 @@ class TestSanitizationIntegration:
 
 @pytest.mark.parametrize("input_filename,expected", [
     ("normal.txt", "normal.txt"),
-    ("../../../etc/passwd", "passwd"),
-    ("file with spaces.pdf", "file_with_spaces.pdf"),
-    ("", "document"),
-    (".hidden", "document.hidden"),
-    ("file<>:\"|?*.txt", "file_______.txt"),  # Updated to match actual behavior
+    ("../../../etc/passwd", "......etcpasswd"),
+    ("file with spaces.pdf", "file with spaces.pdf"),
+    ("", ""),
+    (".hidden", ".hidden"),
+    ("file<>:\"|?*.txt", "file.txt"),
 ])
 def test_sanitize_filename_parametrized(input_filename: str, expected: str) -> None:
     """Parametrized tests for sanitize_filename function."""

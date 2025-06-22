@@ -16,6 +16,7 @@ import uvicorn
 from fastapi import Body, FastAPI, HTTPException, Query
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse
+from pathvalidate import sanitize_filename, sanitize_filepath
 from pydantic import BaseModel
 from starlette.background import BackgroundTask
 from starlette.requests import Request
@@ -28,7 +29,7 @@ from strictdoc.backend.sdoc.reader import SDReader  # type: ignore[import]
 from strictdoc.cli.main import ProjectConfig  # type: ignore[import]
 from strictdoc.core.environment import SDocRuntimeEnvironment  # type: ignore[import]
 
-from app.sanitization import normalize_line_endings, sanitize_filename, sanitize_for_logging, sanitize_path_component
+from app.sanitization import normalize_line_endings, sanitize_for_logging
 
 # Create a custom logger
 logger = logging.getLogger(__name__)
@@ -426,8 +427,8 @@ async def export_document(
     export_format = format.lower()
     # Note: format validation is handled in export_to_format function
 
-    # Sanitize filename to prevent path traversal
-    sanitized_file_name = sanitize_filename(file_name)
+    # Sanitize filename using pathvalidate to prevent path traversal
+    sanitized_file_name = sanitize_filename(file_name, replacement_text="_")
     if sanitized_file_name != file_name:
         # Log both the original (but sanitized for logging) and sanitized filenames
         safe_original_name = sanitize_for_logging(file_name)
@@ -458,19 +459,18 @@ async def export_document(
             export_file, extension, media_type = await export_to_format(input_file, output_dir, export_format)
 
             # Create a secure path for the temporary file in a controlled directory
-            temp_dir_obj = tempfile.gettempdir()
+            temp_dir_obj = Path(tempfile.gettempdir())
             secure_filename = f"{sanitized_file_name}.{extension}"
 
-            # Use sanitize_path_component for additional safety on path components
-            temp_dir_obj = sanitize_path_component(str(temp_dir_obj))
-            secure_filename = sanitize_path_component(secure_filename)
+            # Use pathvalidate sanitize_filepath for the full path
+            temp_file_path = temp_dir_obj / secure_filename
+            persistent_temp_file = Path(sanitize_filepath(str(temp_file_path), platform="auto"))
 
-            # Ensure the sanitized temp directory exists
-            Path(temp_dir_obj).mkdir(parents=True, exist_ok=True)
+            # Ensure the parent directory exists
+            persistent_temp_file.parent.mkdir(parents=True, exist_ok=True)
 
             # Resolve the temporary directory path once
-            temp_dir_resolved = Path(temp_dir_obj).resolve()
-            persistent_temp_file = Path(temp_dir_obj) / secure_filename
+            temp_dir_resolved = temp_dir_obj.resolve()
 
             # Validate all paths to prevent path traversal
             validate_export_paths(persistent_temp_file, temp_dir_resolved, export_file, output_dir)
