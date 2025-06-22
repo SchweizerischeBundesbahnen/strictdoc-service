@@ -16,7 +16,7 @@ import uvicorn
 from fastapi import Body, FastAPI, HTTPException, Query
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse
-from pathvalidate import sanitize_filename, sanitize_filepath
+from pathvalidate import sanitize_filename
 from pydantic import BaseModel
 from starlette.background import BackgroundTask
 from starlette.requests import Request
@@ -34,21 +34,9 @@ from app.sanitization import normalize_line_endings, sanitize_for_logging
 # Create a custom logger
 logger = logging.getLogger(__name__)
 
-# Service version
-SERVICE_VERSION = os.getenv("STRICTDOC_SERVICE_VERSION", "dev")
-
-# Read build timestamp from file
-BUILD_TIMESTAMP = ""
-timestamp_file = Path("/opt/strictdoc/.build_timestamp")
-if timestamp_file.exists():
-    try:
-        BUILD_TIMESTAMP = timestamp_file.read_text().strip()
-    except Exception as e:
-        logging.warning(f"Failed to read build timestamp: {e}")
-
 # Define supported export formats with their file extensions and mime types
 EXPORT_FORMATS = {
-    "doxygen": {"extension": "xml", "mime_type": "text/plain"},
+    "doxygen": {"extension": "xml", "mime_type": "application/xml"},
     "excel": {"extension": "xlsx", "mime_type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"},
     "html": {"extension": "zip", "mime_type": "application/zip"},
     "html2pdf": {"extension": "pdf", "mime_type": "application/pdf"},
@@ -180,16 +168,20 @@ async def get_version() -> VersionInfo:
         VersionInfo: Version information about Python, StrictDoc, and the platform.
 
     """
-    # Get Python version
+    service_version = os.getenv("STRICTDOC_SERVICE_VERSION", "dev")
     python_version = sys.version.split()[0]
-
-    # Get platform info
     platform_info = platform.platform()
 
     # Use the build timestamp from the Docker image build time
-    timestamp = BUILD_TIMESTAMP
+    timestamp = ""
+    timestamp_file = Path("/opt/strictdoc/.build_timestamp")
+    if timestamp_file.exists():
+        try:
+            timestamp = timestamp_file.read_text().strip()
+        except Exception as e:
+            logging.warning(f"Failed to read build timestamp: {e}")
 
-    return VersionInfo(python=python_version, strictdoc=strictdoc_version, platform=platform_info, timestamp=timestamp, strictdoc_service=SERVICE_VERSION)
+    return VersionInfo(python=python_version, strictdoc=strictdoc_version, platform=platform_info, timestamp=timestamp, strictdoc_service=service_version)
 
 
 def process_sdoc_content(content: str, input_file: Path) -> None:
@@ -462,9 +454,8 @@ async def export_document(
             temp_dir_obj = Path(tempfile.gettempdir())
             secure_filename = f"{sanitized_file_name}.{extension}"
 
-            # Use pathvalidate sanitize_filepath for the full path
-            temp_file_path = temp_dir_obj / secure_filename
-            persistent_temp_file = Path(sanitize_filepath(str(temp_file_path), platform="auto"))
+            # Build the path without further sanitization
+            persistent_temp_file = temp_dir_obj / secure_filename
 
             # Ensure the parent directory exists
             persistent_temp_file.parent.mkdir(parents=True, exist_ok=True)
@@ -514,12 +505,12 @@ def validate_export_paths(persistent_temp_file: Path, temp_dir_resolved: Path, e
         HTTPException: If any of the paths are invalid
     """
     # Normalize and validate the paths
-    persistent_temp_file = persistent_temp_file.resolve()
+    persistent_temp_file_resolved = persistent_temp_file.resolve()
     export_file_resolved = export_file.resolve()
     output_dir_resolved = output_dir.resolve()
 
     # Convert paths to strings and sanitize them for potential logging
-    safe_persistent_temp_file = sanitize_for_logging(str(persistent_temp_file))
+    safe_persistent_temp_file = sanitize_for_logging(str(persistent_temp_file_resolved))
     safe_temp_dir_resolved = sanitize_for_logging(str(temp_dir_resolved))
     safe_export_file_resolved = sanitize_for_logging(str(export_file_resolved))
     safe_output_dir_resolved = sanitize_for_logging(str(output_dir_resolved))
@@ -527,13 +518,13 @@ def validate_export_paths(persistent_temp_file: Path, temp_dir_resolved: Path, e
     # For debugging - use sanitized path strings
     logging.debug("Validating paths: temp_file=%s, temp_dir=%s", safe_persistent_temp_file, safe_temp_dir_resolved)
 
-    # Ensure the resolved path is strictly within the temporary directory
-    if not str(persistent_temp_file).startswith(str(temp_dir_resolved) + os.sep):
+    # Check if persistent_temp_file is within temp_dir
+    if not persistent_temp_file_resolved.is_relative_to(temp_dir_resolved):
         logging.warning("Invalid file path detected: %s not in %s", safe_persistent_temp_file, safe_temp_dir_resolved)
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail="Invalid file path detected.")
 
-    # Validate the export_file path is within the expected output directory
-    if not str(export_file_resolved).startswith(str(output_dir_resolved) + os.sep):
+    # Check if export_file is within output_dir
+    if not export_file_resolved.is_relative_to(output_dir_resolved):
         logging.warning("Invalid export path detected: %s not in %s", safe_export_file_resolved, safe_output_dir_resolved)
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail="Invalid export file path detected.")
 
