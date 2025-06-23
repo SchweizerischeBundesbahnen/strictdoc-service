@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.1](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/compare/v0.9.0...v0.9.1) (2025-06-23)
+
+
+### Bug Fixes
+
+* enhance logging sanitization and improve path validation for security ([#48](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/issues/48)) ([38f4c1a](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/38f4c1a7b66744205511115d88cbe8f1e1404efe))
+
 ## [0.9.0](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/compare/v0.8.0...v0.9.0) (2025-06-19)
 
 
