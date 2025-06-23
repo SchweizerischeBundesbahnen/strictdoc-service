@@ -1,78 +1,47 @@
-"""Input sanitization utilities for StrictDoc service."""
+"""Utilities for input sanitization in the StrictDoc service."""
 
 import re
-from pathlib import Path
 
 
-def sanitize_filename(filename: str) -> str:
-    """Sanitize a filename to prevent path traversal attacks.
-
-    Args:
-        filename: The filename to sanitize
-
-    Returns:
-        str: The sanitized filename
+def sanitize_for_logging(text: str, max_length: int = 1000) -> str:
     """
-    # Remove any path components, only keep the base filename
-    sanitized = Path(filename).name
-
-    # Additional sanitization - keep only alphanumeric chars, underscore, hyphen, and dot
-    sanitized = re.sub(r"[^\w.-]", "_", sanitized)
-
-    # Ensure the filename is not empty or starts with a dot
-    if not sanitized or sanitized.startswith("."):
-        sanitized = "document" + sanitized
-
-    return sanitized
-
-
-def sanitize_for_logging(text: str) -> str:
-    """Sanitize text for safe logging by removing control characters.
-
-    Prevents log injection attacks by removing newlines and carriage returns.
+    Sanitize text for safe logging by:
+    - Converting non-string input to string
+    - Removing all control characters
+    - Replacing newlines with spaces
+    - Truncating to `max_length` and appending '...[truncated]' if necessary
 
     Args:
-        text: The text to sanitize
+        text (str): The input text to sanitize.
+        max_length (int, optional): Maximum allowed length of the sanitized text. Defaults to 1000.
 
     Returns:
-        str: The sanitized text safe for logging
+        str: The sanitized text safe for logging.
     """
     if not isinstance(text, str):
         text = str(text)
 
-    # Remove newlines and carriage returns to prevent log injection
-    return text.replace("\n", "").replace("\r", "")
+    # Remove all control characters
+    text = re.sub(r"[\x00-\x1f\x7f-\x9f]", "", text)
+
+    # Replace newlines with spaces
+    text = text.replace("\n", " ").replace("\r", " ")
+
+    # Truncate if too long
+    if len(text) > max_length:
+        text = text[:max_length] + "...[truncated]"
+
+    return text
 
 
 def normalize_line_endings(content: str) -> str:
-    """Normalize line endings to Unix style.
+    """
+    Normalize all line endings in the input content to Unix style (`\n`).
 
     Args:
-        content: The content with potentially mixed line endings
+        content (str): The content with potentially mixed line endings.
 
     Returns:
-        str: Content with normalized line endings
+        str: Content with all line endings normalized to `\n`.
     """
-    # Normalize line endings to Unix style
     return content.replace("\r\n", "\n").replace("\r", "\n")
-
-
-def sanitize_path_component(path_component: str) -> str:
-    """Sanitize a path component to prevent directory traversal.
-
-    Args:
-        path_component: The path component to sanitize
-
-    Returns:
-        str: The sanitized path component
-    """
-    # Remove any dangerous path components
-    sanitized = re.sub(r"[/\\\.]{2,}", "_", path_component)
-    sanitized = sanitized.replace("..", "_")
-    sanitized = sanitized.strip("./\\")
-
-    # Handle whitespace-only strings
-    if not sanitized or not sanitized.strip():
-        sanitized = "safe_component"
-
-    return sanitized
