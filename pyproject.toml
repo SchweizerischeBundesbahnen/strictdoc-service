@@ -27,7 +27,7 @@ packages = [{include = "app"}]
 # this duplication and legacy format must be kept until Renovate support is added for [project.dependencies] for poetry-lock updates
 # for more information check comments above
 [tool.poetry.dependencies]
-strictdoc = "0.9.1"
+strictdoc = "0.9.3"
 fastapi = "0.115.14"
 uvicorn = "0.34.3"
 pathvalidate = "3.3.1"
