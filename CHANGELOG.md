@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.9.2](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/compare/v0.9.1...v0.9.2) (2025-07-18)
+
+
+### Bug Fixes
+
+* **deps:** update dependency fastapi to v0.115.14 ([#50](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/issues/50)) ([52ba35b](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/52ba35b165b6786bba8aeb2528596a610de40358))
+* **deps:** update dependency fastapi to v0.116.0 ([fc0fc04](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/fc0fc042b167d26400baf27d63c3a727e4d552e8))
+* **deps:** update dependency fastapi to v0.116.1 ([b740eb3](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/b740eb3ae1756c0102105e62725ee9a58c310089))
+* **deps:** update dependency strictdoc to v0.9.3 ([#51](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/issues/51)) ([a8b1504](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/a8b1504209973fed115d40baafdaf6f575bfc69e))
+* **deps:** update dependency strictdoc to v0.9.4 ([26f000d](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/26f000de5a367c06fe893cf998bcf2ef4b0198c7))
+* **deps:** update dependency uvicorn to v0.35.0 ([#52](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/issues/52)) ([8c956d4](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/8c956d47c20574faeef37cb9601af234dfe7874a))
+
 ## [0.9.1](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/compare/v0.9.0...v0.9.1) (2025-06-23)
 
 
