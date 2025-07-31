@@ -37,7 +37,7 @@ urllib3 = "2.5.0"  # if not pinned, "poetry update" will downgrade it from 2.5.0
 [tool.poetry.group.dev.dependencies]
 pre-commit = "4.2.0"
 ruff = "0.12.7"
-mypy = "1.17.0"
+mypy = "1.17.1"
 
 [tool.poetry.group.test.dependencies]
 tox = "4.28.3"
