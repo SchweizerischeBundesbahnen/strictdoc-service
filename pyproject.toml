@@ -35,7 +35,7 @@ pathvalidate = "3.3.1"
 urllib3 = "2.5.0"  # if not pinned, "poetry update" will downgrade it from 2.5.0 to 2.4.0
 
 [tool.poetry.group.dev.dependencies]
-pre-commit = "4.2.0"
+pre-commit = "4.3.0"
 ruff = "0.12.8"
 mypy = "1.17.1"
 
