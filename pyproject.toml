@@ -47,7 +47,7 @@ pytest = "8.4.1"
 pytest-mock = "3.14.1"
 pytest-asyncio = "1.1.0"
 httpx = "0.28.1"
-coverage = "7.10.2"
+coverage = "7.10.3"
 
 [build-system]
 requires = ["poetry-core"]
