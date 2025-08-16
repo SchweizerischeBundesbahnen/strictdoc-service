@@ -1,5 +1,5 @@
 # Builder stage
-FROM python:3.13.6-slim@sha256:2a928e11761872b12003515ea59b3c40bb5340e2e5ecc1108e043f92be7e473d AS builder
+FROM python:3.13.7-slim@sha256:8220ccec22e88cddd9a541cacd1bf48423bda8cdeb1015249e4b298edf86cdc7 AS builder
 WORKDIR /app
 
 # Install build dependencies
@@ -21,7 +21,7 @@ COPY pyproject.toml poetry.lock ./
 RUN poetry install --no-root --only main
 
 # Final stage
-FROM python:3.13.6-slim@sha256:2a928e11761872b12003515ea59b3c40bb5340e2e5ecc1108e043f92be7e473d
+FROM python:3.13.7-slim@sha256:8220ccec22e88cddd9a541cacd1bf48423bda8cdeb1015249e4b298edf86cdc7
 LABEL maintainer="SBB Polarion Team <polarion-opensource@sbb.ch>" \
       org.opencontainers.image.title="StrictDoc Service" \
       org.opencontainers.image.description="API service for StrictDoc document processing" \
