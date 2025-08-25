@@ -1936,13 +1936,13 @@ full = ["httpx (>=0.27.0,<0.29.0)", "itsdangerous", "jinja2", "python-multipart 
 
 [[package]]
 name = "strictdoc"
-version = "0.10.0"
+version = "0.10.1"
 description = "StrictDoc is open-source software for technical documentation and requirements management."
 optional = false
 python-versions = ">=3.8"
 groups = ["main"]
 files = [
-    {file = "strictdoc-0.10.0.tar.gz", hash = "sha256:a2ac1ce34c65be99073570b6a775ddf6812b961679fa9f1654715e376fa74514"},
+    {file = "strictdoc-0.10.1.tar.gz", hash = "sha256:8d3b65219e57e84b1d42887734719799da8ac0bff9eb6a92796c48b1786d6afe"},
 ]
 
 [package.dependencies]
@@ -2641,4 +2641,4 @@ files = [
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.13"
-content-hash = "03c2eb8ade56d1d7a7845b5058bbe5436b9b14570b8b0fc962622a4957dae3a0"
+content-hash = "ce3da4a1b4bb01829da4a7f4c3020022ecdd00e70851fcb9980b567ba1f998be"
