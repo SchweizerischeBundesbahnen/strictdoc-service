@@ -43,7 +43,7 @@ mypy = "1.17.1"
 tox = "4.28.4"
 # for debug source code for pytest --> see tox.ini section [testenv]
 docker = "7.1.0"
-pytest = "8.4.1"
+pytest = "8.4.2"
 pytest-mock = "3.14.1"
 pytest-asyncio = "1.1.0"
 httpx = "0.28.1"
