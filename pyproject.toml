@@ -44,7 +44,7 @@ tox = "4.30.2"
 # for debug source code for pytest --> see tox.ini section [testenv]
 docker = "7.1.0"
 pytest = "8.4.2"
-pytest-mock = "3.15.0"
+pytest-mock = "3.15.1"
 pytest-asyncio = "1.2.0"
 httpx = "0.28.1"
 coverage = "7.10.6"
