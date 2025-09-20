@@ -29,7 +29,7 @@ packages = [{include = "app"}]
 [tool.poetry.dependencies]
 strictdoc = "0.10.0"
 fastapi = "0.116.2"
-uvicorn = "0.35.0"
+uvicorn = "0.36.0"
 pathvalidate = "3.3.1"
 # pinning version to avoid security issues
 urllib3 = "2.5.0"  # if not pinned, "poetry update" will downgrade it from 2.5.0 to 2.4.0
