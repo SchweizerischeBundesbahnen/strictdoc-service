@@ -59,6 +59,7 @@ RUN uv sync --frozen --no-dev
 ```dockerfile
 # Builder stage
 FROM alpine:3.19 AS builder
+WORKDIR /app
 RUN apk add --no-cache curl ca-certificates gcc musl-dev
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 ENV PATH="/root/.cargo/bin:$PATH"
@@ -68,6 +69,7 @@ RUN uv sync --frozen --no-dev
 
 # Runtime stage
 FROM alpine:3.19 AS runtime
+WORKDIR /app
 RUN apk add --no-cache ca-certificates
 COPY --from=builder /root/.cargo/bin/uv /usr/local/bin/
 COPY --from=builder /root/.local/share/uv/python /root/.local/share/uv/python
