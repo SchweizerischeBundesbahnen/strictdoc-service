@@ -5,6 +5,7 @@
       "Bash(git checkout:*)",
       "Bash(gh run list:*)",
       "Bash(gh run view:*)",
+      "Bash(gh run watch:*)",
       "Bash(gh pr view:*)",
       "Bash(gh pr checks:*)",
       "Bash(gh issue create:*)",
