@@ -87,6 +87,59 @@ FROM ghcr.io/schweizerischebundesbahnen/strictdoc-service:latest
 
 ## Development
 
+### Prerequisites
+
+This project uses [uv](https://github.com/astral-sh/uv) for fast and modern Python dependency management.
+
+Install uv:
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+### Local Development Setup
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/SchweizerischeBundesbahnen/strictdoc-service.git
+   cd strictdoc-service
+   ```
+
+2. Install dependencies:
+   ```bash
+   uv sync --all-groups
+   ```
+
+3. Run the service locally:
+   ```bash
+   uv run python -m app.strictdoc_service_application --port 9083
+   ```
+
+### Code Quality
+
+```bash
+# Format and lint code
+uv run ruff format
+uv run ruff check
+
+# Type checking
+uv run mypy .
+
+# Run all linting
+uv run tox -e lint
+```
+
+### Testing
+
+```bash
+# Run all tests with coverage
+uv run pytest --cov=app tests/ --cov-report=term-missing
+
+# Run tests with tox
+uv run tox
+```
+
+See [tests/README.md](tests/README.md) for detailed test organization and instructions.
+
 ### Building the Docker Image
 
 To build the Docker image from the source with a custom version, use:
@@ -119,10 +172,6 @@ To stop the running container, execute:
 ```bash
 docker container stop strictdoc-service
 ```
-
-### Testing
-
-See [tests/README.md](tests/README.md) for detailed test organization and instructions.
 
 ## Access service
 

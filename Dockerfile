@@ -11,14 +11,14 @@ RUN apt-get update && \
         python3-dev \
         libffi-dev \
         libssl-dev \
+        curl \
     && pip install --no-cache-dir -r requirements.txt \
-    && poetry config virtualenvs.create false \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy only dependency files
-COPY pyproject.toml poetry.lock ./
-RUN poetry install --no-root --only main
+# Copy dependency files
+COPY pyproject.toml uv.lock ./
+RUN uv pip install --system --no-cache -r pyproject.toml
 
 # Final stage
 FROM python:3.13.7-slim@sha256:5f55cdf0c5d9dc1a415637a5ccc4a9e18663ad203673173b8cda8f8dcacef689
