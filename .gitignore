@@ -182,3 +182,5 @@ pyrightconfig.json
 junittest.xml
 /.history/
 test-*
+*db/
+*.sarif

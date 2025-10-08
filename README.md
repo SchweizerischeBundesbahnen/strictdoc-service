@@ -13,9 +13,13 @@
 
 A Dockerized service providing a REST API interface to leverage [StrictDoc](https://github.com/strictdoc-project/strictdoc)'s functionality for documentation and requirements management.
 
+Built on **Red Hat Universal Base Image (UBI)** for enterprise-grade security, stability, and OpenShift compatibility.
+
 ## Features
 
 - Simple REST API to access [StrictDoc](https://github.com/strictdoc-project/strictdoc)
+- **Red Hat UBI 9 base image** - Enterprise-grade security and OpenShift compatibility
+- **Fast builds** - Pre-compiled wheels, millisecond dependency installation with uv
 - Compatible with amd64 and arm64 architectures
 - Easily deployable via Docker or Docker Compose
 - Configurable port and logging level
@@ -26,7 +30,7 @@ A Dockerized service providing a REST API interface to leverage [StrictDoc](http
   - ReqIF/ReqIFZ - Requirements Interchange Format (XML/compressed)
   - RST - ReStructured Text for documentation
   - SDOC - StrictDoc native format
-  - PDF (experimental) - Printable document format
+  - PDF - **Not available** (requires Chromium/ChromeDriver, which significantly increases image size)
 
 ## Getting Started
 
@@ -87,18 +91,83 @@ FROM ghcr.io/schweizerischebundesbahnen/strictdoc-service:latest
 
 ## Development
 
-### Building the Docker Image
+### Prerequisites
 
-To build the Docker image from the source with a custom version, use:
+This project uses [uv](https://github.com/astral-sh/uv) for fast and modern Python dependency management.
+
+Install uv:
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+### Local Development Setup
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/SchweizerischeBundesbahnen/strictdoc-service.git
+   cd strictdoc-service
+   ```
+
+2. Install dependencies:
+   ```bash
+   uv sync --all-groups
+   ```
+
+3. Run the service locally:
+   ```bash
+   uv run python -m app.strictdoc_service_application --port 9083
+   ```
+
+### Code Quality
 
 ```bash
-docker build \
+# Format and lint code
+uv run ruff format
+uv run ruff check
+
+# Type checking
+uv run mypy .
+
+# Run all linting
+uv run tox -e lint
+```
+
+### Testing
+
+```bash
+# Run all tests with coverage
+uv run pytest --cov=app tests/ --cov-report=term-missing
+
+# Run tests with tox
+uv run tox
+```
+
+See [tests/README.md](tests/README.md) for detailed test organization and instructions.
+
+### Building the Docker Image
+
+**IMPORTANT:** Always use Docker BuildKit for optimal build performance:
+
+```bash
+# Enable BuildKit for cache mount support (REQUIRED)
+DOCKER_BUILDKIT=1 docker build \
   --build-arg APP_IMAGE_VERSION=0.0.0 \
-  --file Dockerfile \
   --tag strictdoc-service:0.0.0 .
 ```
 
 Replace 0.0.0 with the desired version number.
+
+#### About the Base Image
+
+This service uses **Red Hat Universal Base Image (UBI) 9 Minimal** for optimal performance and compatibility:
+
+- **Image size**: ~604MB (optimized for enterprise deployment)
+- **Python installation**: Python 3.13 via uv (installed to `/opt/python` for non-root access)
+- **Dependency management**: Ultra-fast installation with pre-compiled wheels (milliseconds vs minutes)
+- **Security**: Regular security updates from Red Hat, enterprise-grade support
+- **Compatibility**: OpenShift ready, glibc-based for maximum package compatibility
+
+**Why not Alpine?** While Alpine Linux produces smaller images, it uses musl libc which causes compilation issues with some Python packages (tree-sitter) on arm64 architecture. UBI provides the best balance of size, speed, and compatibility.
 
 ### Running the Development Container
 
@@ -119,10 +188,6 @@ To stop the running container, execute:
 ```bash
 docker container stop strictdoc-service
 ```
-
-### Testing
-
-See [tests/README.md](tests/README.md) for detailed test organization and instructions.
 
 ## Access service
 
@@ -167,6 +232,11 @@ StrictDoc Service provides the following endpoints:
 > |----------------|----------|-----------|---------------------------------------------------------------------------------------------------------------|
 > | format         | optional | string    | Export format: html, html2pdf, rst, json, excel, reqif-sdoc, reqifz-sdoc, sdoc, doxygen, spdx (default: html) |
 > | file_name      | optional | string    | Base name for the output file (default: exported-document)                                                    |
+
+**Note on PDF Export:** The `html2pdf` format is currently **not available** in this service. PDF generation requires Chromium/ChromeDriver, which would increase the Docker image size by ~300MB+. If you need PDF output, consider:
+1. Using the `html` format and converting to PDF externally
+2. Using a separate PDF conversion service
+3. Building a custom image with Chromium installed
 
 ##### Responses
 

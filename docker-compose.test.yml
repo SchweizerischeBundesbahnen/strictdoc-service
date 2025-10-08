@@ -1,16 +1,9 @@
 ---
-version: '3.8'
 x-logging: &default-logging
   driver: json-file
   options:
     max-size: 10m
     max-file: '5'
-x-healthcheck: &default-healthcheck
-  test: [CMD, curl, -f, http://localhost:9083/version]
-  interval: 30s
-  timeout: 10s
-  retries: 3
-  start_period: 5s
 services:
   strictdoc:
     build:
@@ -21,11 +14,10 @@ services:
     container_name: strictdoc_service_test
     restart: unless-stopped
     read_only: true
-    security_opt: [no-new-privileges:true]
     cap_drop: [ALL]
-    ports: [9083:9083]
+    ports:
+      - 9083:9083
     environment: [LOG_LEVEL=INFO]
-    healthcheck: *default-healthcheck
     logging: *default-logging
     volumes:
       - type: tmpfs

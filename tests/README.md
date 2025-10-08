@@ -26,15 +26,19 @@ This directory contains the test suite for the StrictDoc service.
 
 Run all tests
 ```bash
-poetry run pytest
+uv run pytest
 ```
 Run specific test file
 ```bash
-poetry run pytest tests/export/test_unit.py -v
+uv run pytest tests/export/test_unit.py -v
 ```
 Run with coverage
 ```bash
-poetry run pytest --cov=src tests/ --cov-report=term-missing
+uv run pytest --cov=app tests/ --cov-report=term-missing
+```
+Run all tests with tox
+```bash
+uv run tox
 ```
 
 ### Docker-based Testing

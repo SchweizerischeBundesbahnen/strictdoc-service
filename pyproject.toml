@@ -5,53 +5,38 @@ description = "Service for StrictDoc requirements management and documentation t
 authors = [
     {name = "SBB Polarion Team", email = "polarion-opensource@sbb.ch"},
 ]
-license = "Apache License 2.0"
+license = {text = "Apache License 2.0"}
 readme = "README.md"
 requires-python = ">=3.13"
-dynamic = ["dependencies"]
-# Dependencies moved back to [tool.poetry.dependencies] for Renovate compatibility
-# See: https://github.com/renovatebot/renovate/issues/33509
-# TODO: Migrate back to [project.dependencies] when Renovate adds Poetry v2 support
-# dependencies = [
-#     "strictdoc==0.9.1",
-#     "fastapi==0.115.13",
-#     "uvicorn==0.34.3",
-#     "pathvalidate==3.3.1",
-#     # pinning version to avoid security issues
-#     "urllib3==2.5.0",  # if not pinned, "poetry update" will downgrade it from 2.5.0 to 2.4.0
-# ]
+dependencies = [
+    "strictdoc==0.10.0",
+    "fastapi==0.118.1",
+    "uvicorn==0.37.0",
+    "pathvalidate==3.3.1",
+    # pinning version to avoid security issues
+    "urllib3==2.5.0",
+]
 
-[tool.poetry]
-packages = [{include = "app"}]
+[dependency-groups]
+dev = [
+    "pre-commit==4.3.0",
+    "ruff==0.13.3",
+    "mypy==1.18.2",
+]
+test = [
+    "tox==4.30.3",
+    # for debug source code for pytest --> see tox.ini section [testenv]
+    "docker==7.1.0",
+    "pytest==8.4.2",
+    "pytest-mock==3.15.1",
+    "pytest-asyncio==1.2.0",
+    "httpx==0.28.1",
+    "coverage==7.10.7",
+]
 
-# this duplication and legacy format must be kept until Renovate support is added for [project.dependencies] for poetry-lock updates
-# for more information check comments above
-[tool.poetry.dependencies]
-strictdoc = "0.10.0"
-fastapi = "0.118.1"
-uvicorn = "0.37.0"
-pathvalidate = "3.3.1"
-# pinning version to avoid security issues
-urllib3 = "2.5.0"  # if not pinned, "poetry update" will downgrade it from 2.5.0 to 2.4.0
-
-[tool.poetry.group.dev.dependencies]
-pre-commit = "4.3.0"
-ruff = "0.14.0"
-mypy = "1.18.2"
-
-[tool.poetry.group.test.dependencies]
-tox = "4.30.3"
-# for debug source code for pytest --> see tox.ini section [testenv]
-docker = "7.1.0"
-pytest = "8.4.2"
-pytest-mock = "3.15.1"
-pytest-asyncio = "1.2.0"
-httpx = "0.28.1"
-coverage = "7.10.7"
-
-[build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+[tool.uv]
+# Set to false because this project is an application, not a library
+package = false
 
 [tool.ruff]
 line-length = 240
