@@ -225,6 +225,9 @@ def process_sdoc_content(content: str, input_file: Path) -> None:
             source_root_path=None,
             include_source_paths=[],
             exclude_source_paths=[],
+            test_report_root_dict={},
+            source_nodes=[],
+            html2pdf_strict=False,
             html2pdf_template=None,
             bundle_document_version=None,
             bundle_document_date=None,
@@ -235,9 +238,8 @@ def process_sdoc_content(content: str, input_file: Path) -> None:
             reqif_import_markup=None,
             config_last_update=None,
             chromedriver=None,
-            test_report_root_dict={},
-            source_nodes=[],
             section_behavior={},
+            statistics_generator=None,
         )
 
         # Monkey patch the config to avoid TypeError in pickle_cache.py
