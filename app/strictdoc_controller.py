@@ -47,6 +47,14 @@ EXPORT_FORMATS = {
     "spdx": {"extension": "spdx", "mime_type": "text/plain"},
 }
 
+# Default values for StrictDoc ProjectConfig (v0.14.0+)
+# These replace the removed DEFAULT_* class constants
+DEFAULT_PROJECT_TITLE = "Untitled Project"
+DEFAULT_PROJECT_FEATURES = None
+DEFAULT_SERVER_HOST = "127.0.0.1"
+DEFAULT_SERVER_PORT = 5111
+DEFAULT_SECTION_BEHAVIOR = "[SECTION]"
+
 app = FastAPI(
     title="StrictDoc Service API",
     description="API for StrictDoc document generation and export",
@@ -212,12 +220,12 @@ def process_sdoc_content(content: str, input_file: Path) -> None:
         # Note: StrictDoc 0.14.0+ removed the 'environment' parameter from ProjectConfig
         input_parent = str(input_file.parent)
         project_config = ProjectConfig(
-            project_title="Untitled Project",
+            project_title=DEFAULT_PROJECT_TITLE,
             dir_for_sdoc_assets=input_parent,
             dir_for_sdoc_cache=str(Path(input_parent) / "cache"),
-            project_features=None,
-            server_host="127.0.0.1",
-            server_port=5111,
+            project_features=DEFAULT_PROJECT_FEATURES,
+            server_host=DEFAULT_SERVER_HOST,
+            server_port=DEFAULT_SERVER_PORT,
             include_doc_paths=[],
             exclude_doc_paths=[],
             source_root_path=None,
@@ -235,7 +243,7 @@ def process_sdoc_content(content: str, input_file: Path) -> None:
             reqif_enable_mid=False,
             reqif_import_markup=None,
             chromedriver=None,
-            section_behavior="[SECTION]",
+            section_behavior=DEFAULT_SECTION_BEHAVIOR,
             statistics_generator=None,
         )
 
