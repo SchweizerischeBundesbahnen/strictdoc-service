@@ -27,7 +27,6 @@ from strictdoc import __version__ as strictdoc_version  # type: ignore[import]
 from strictdoc.backend.sdoc.pickle_cache import PickleCache  # type: ignore[import]
 from strictdoc.backend.sdoc.reader import SDReader  # type: ignore[import]
 from strictdoc.cli.main import ProjectConfig  # type: ignore[import]
-from strictdoc.core.environment import SDocRuntimeEnvironment  # type: ignore[import]
 
 from app.sanitization import normalize_line_endings, sanitize_for_logging
 
@@ -209,17 +208,16 @@ def process_sdoc_content(content: str, input_file: Path) -> None:
     # Parse the document using StrictDoc's reader to validate
     try:
         reader = SDReader()
-        # Create environment and config with explicit paths
+        # Create config with explicit paths
+        # Note: StrictDoc 0.14.0+ removed the 'environment' parameter from ProjectConfig
         input_parent = str(input_file.parent)
-        environment = SDocRuntimeEnvironment(input_parent)
         project_config = ProjectConfig(
-            environment=environment,
-            project_title=ProjectConfig.DEFAULT_PROJECT_TITLE,
+            project_title="Untitled Project",
             dir_for_sdoc_assets=input_parent,
             dir_for_sdoc_cache=str(Path(input_parent) / "cache"),
-            project_features=ProjectConfig.DEFAULT_FEATURES,
-            server_host=ProjectConfig.DEFAULT_SERVER_HOST,
-            server_port=ProjectConfig.DEFAULT_SERVER_PORT,
+            project_features=None,
+            server_host="127.0.0.1",
+            server_port=5111,
             include_doc_paths=[],
             exclude_doc_paths=[],
             source_root_path=None,
@@ -236,9 +234,8 @@ def process_sdoc_content(content: str, input_file: Path) -> None:
             reqif_multiline_is_xhtml=False,
             reqif_enable_mid=False,
             reqif_import_markup=None,
-            config_last_update=None,
             chromedriver=None,
-            section_behavior={},
+            section_behavior="[SECTION]",
             statistics_generator=None,
         )
 
