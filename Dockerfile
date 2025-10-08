@@ -1,4 +1,7 @@
 # Red Hat Universal Base Image (UBI) - glibc-based, pre-compiled wheels work!
+# Copy uv from official image (version matches .tool-versions)
+FROM ghcr.io/astral-sh/uv:0.9.0@sha256:8f926a80debadba6f18442030df316c0e2b28d6af62d1292fb44b1c874173dc0 AS uv-source
+
 FROM registry.access.redhat.com/ubi9/ubi-minimal:9.6-1758184547@sha256:7c5495d5fad59aaee12abc3cbbd2b283818ee1e814b00dbc7f25bf2d14fa4f0c
 
 ARG APP_IMAGE_VERSION=0.0.0
@@ -10,8 +13,8 @@ ENV WORKING_DIR="/opt/strictdoc" \
 
 WORKDIR ${WORKING_DIR}
 
-# Copy uv from official image
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
+# Copy uv binary from source stage
+COPY --from=uv-source /uv /usr/local/bin/uv
 
 # Install runtime dependencies using microdnf (UBI minimal)
 # Note: curl-minimal is already installed, shadow-utils provides useradd
@@ -22,12 +25,12 @@ RUN microdnf install -y \
     && microdnf clean all
 
 # Copy Python version file and dependency files
-COPY .python-version pyproject.toml uv.lock ./
+COPY .tool-versions pyproject.toml uv.lock ./
 
-# Install Python via uv to /opt/python (version from .python-version file)
+# Install Python via uv to /opt/python (version from .tool-versions file)
 ENV UV_PYTHON_INSTALL_DIR=/opt/python
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
-RUN PYTHON_VERSION=$(cat .python-version) && \
+RUN PYTHON_VERSION=$(awk '/^python / {print $2}' .tool-versions) && \
     uv python install "${PYTHON_VERSION}"
 
 # Install dependencies with cache mount

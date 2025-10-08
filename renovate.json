@@ -33,6 +33,16 @@
       "matchPackageNames": [
         "strictdoc"
       ]
+    },
+    {
+      "matchManagers": [
+        "asdf"
+      ],
+      "matchDepNames": [
+        "python"
+      ],
+      "semanticCommitType": "chore",
+      "commitMessageTopic": "Python version"
     }
   ]
 }
