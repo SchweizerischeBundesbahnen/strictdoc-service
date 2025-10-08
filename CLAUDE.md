@@ -146,3 +146,15 @@ uv run uvicorn app.strictdoc_controller:app --host 127.0.0.1 --port 9083
 - Controller tests: `test_strictdoc_controller.py`
 - Shell tests: `tests/shell/test_strictdoc_service.sh`
 - Container tests: `tests/container/container-structure-test.yaml`
+
+## Task Tracking
+
+**Use `/TODO.md` as a working scratchpad during development** (NOT committed to git)
+- Update task checkboxes when completing work
+- Add new tasks as discovered during implementation
+- Helps track progress within a single issue/PR
+- Link to GitHub issues for context (e.g., "Issue #59")
+
+**TODO.md is NOT committed to git** - use PR descriptions and commit messages for permanent record
+
+**DO NOT use the TodoWrite tool** - it's ephemeral and less useful than TODO.md
