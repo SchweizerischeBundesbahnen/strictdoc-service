@@ -11,7 +11,7 @@ ENV WORKING_DIR="/opt/strictdoc" \
 WORKDIR ${WORKING_DIR}
 
 # Copy uv from official image
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
+COPY --from=ghcr.io/astral-sh/uv:latest@sha256:8f926a80debadba6f18442030df316c0e2b28d6af62d1292fb44b1c874173dc0 /uv /usr/local/bin/uv
 
 # Install runtime dependencies using microdnf (UBI minimal)
 # Note: curl-minimal is already installed, shadow-utils provides useradd
