@@ -227,7 +227,7 @@ def test_validation_exception_handler_format_error(client: TestClient) -> None:
     # Test with invalid format parameter
     response = client.post(
         "/export?format=invalid_format",
-        data="[DOCUMENT]\nTitle: Test",
+        content="[DOCUMENT]\nTitle: Test",
         headers={"Content-Type": "text/plain"},
     )
 

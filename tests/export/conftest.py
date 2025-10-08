@@ -85,6 +85,9 @@ def docker_setup() -> Generator[bool]:
     container_running = False
 
     try:
+        # Enable BuildKit via environment variable
+        import os
+        os.environ["DOCKER_BUILDKIT"] = "1"
         client = docker.from_env()
     except DockerException as e:
         raise RuntimeError(f"Failed to connect to Docker: {e!s}") from e
@@ -117,17 +120,24 @@ def docker_setup() -> Generator[bool]:
                 logger.info(f"Removing temporary file: {temp_file}")
                 temp_file.unlink()
 
-        # Build the image
+        # Build the image using CLI with BuildKit (Python Docker SDK doesn't support BuildKit properly)
         logger.info("Building Docker image strictdoc-service:test")
         try:
-            client.images.build(
-                path=".",
-                dockerfile="Dockerfile",
-                tag="strictdoc-service:test",
-                rm=True,
-                forcerm=True,
-                nocache=True,  # Don't use cache to get a fresh build
+            import subprocess
+            result = subprocess.run(
+                ["docker", "build", "-t", "strictdoc-service:test", "."],
+                env={**os.environ, "DOCKER_BUILDKIT": "1"},
+                capture_output=True,
+                text=True,
+                timeout=300,
             )
+            if result.returncode != 0:
+                logger.error(f"Docker build failed: {result.stderr}")
+                raise RuntimeError(f"Docker build failed: {result.stderr}")
+            logger.info("Docker build succeeded")
+        except subprocess.TimeoutExpired as e:
+            logger.error("Docker build timed out")
+            raise RuntimeError("Docker build timed out") from e
         except Exception as e:
             logger.error(f"Failed to build Docker image: {e}")
             raise RuntimeError(f"Docker image build failed: {e}") from e

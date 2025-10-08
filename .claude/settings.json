@@ -1,4 +1,7 @@
 {
+  "enabledMcpjsonServers": [
+    "context7"
+  ],
   "permissions": {
     "allow": [
       "Bash(git fetch:*)",
@@ -15,11 +18,8 @@
       "mcp__context7__resolve-library-id",
       "mcp__context7__get-library-docs"
     ],
-    "deny": [],
-    "ask": []
+    "ask": [],
+    "deny": []
   },
-  "enabledMcpjsonServers": [
-    "context7"
-  ],
   "spinnerTipsEnabled": false
 }

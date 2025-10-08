@@ -2,9 +2,9 @@
 schemaVersion: 2.0.0
 commandTests:
   - name: Python installation - check that the python binary is in the correct location
-    command: which
-    args: [python]
-    expectedOutput: [/usr/local/bin/python]
+    command: sh
+    args: ["-c", "command -v python"]
+    expectedOutput: [/opt/strictdoc/.venv/bin/python]
   - name: Python version is correct
     command: python
     args: [--version]
@@ -12,8 +12,8 @@ commandTests:
   - name: Uv version is correct
     command: uv
     args: [--version]
-    expectedOutput: [version '0.*.*']
+    expectedOutput: [uv 0.*.*]
   - name: StrictDoc version is correct
     command: strictdoc
     args: [--version]
-    expectedOutput: [0.9.*]
+    expectedOutput: [0.10.*]

@@ -13,9 +13,13 @@
 
 A Dockerized service providing a REST API interface to leverage [StrictDoc](https://github.com/strictdoc-project/strictdoc)'s functionality for documentation and requirements management.
 
+Built on **Red Hat Universal Base Image (UBI)** for enterprise-grade security, stability, and OpenShift compatibility.
+
 ## Features
 
 - Simple REST API to access [StrictDoc](https://github.com/strictdoc-project/strictdoc)
+- **Red Hat UBI 9 base image** - Enterprise-grade security and OpenShift compatibility
+- **Fast builds** - Pre-compiled wheels, millisecond dependency installation with uv
 - Compatible with amd64 and arm64 architectures
 - Easily deployable via Docker or Docker Compose
 - Configurable port and logging level
@@ -26,7 +30,7 @@ A Dockerized service providing a REST API interface to leverage [StrictDoc](http
   - ReqIF/ReqIFZ - Requirements Interchange Format (XML/compressed)
   - RST - ReStructured Text for documentation
   - SDOC - StrictDoc native format
-  - PDF (experimental) - Printable document format
+  - PDF - **Not available** (requires Chromium/ChromeDriver, which significantly increases image size)
 
 ## Getting Started
 
@@ -142,16 +146,28 @@ See [tests/README.md](tests/README.md) for detailed test organization and instru
 
 ### Building the Docker Image
 
-To build the Docker image from the source with a custom version, use:
+**IMPORTANT:** Always use Docker BuildKit for optimal build performance:
 
 ```bash
-docker build \
+# Enable BuildKit for cache mount support (REQUIRED)
+DOCKER_BUILDKIT=1 docker build \
   --build-arg APP_IMAGE_VERSION=0.0.0 \
-  --file Dockerfile \
   --tag strictdoc-service:0.0.0 .
 ```
 
 Replace 0.0.0 with the desired version number.
+
+#### About the Base Image
+
+This service uses **Red Hat Universal Base Image (UBI) 9 Minimal** for optimal performance and compatibility:
+
+- **Image size**: ~604MB (optimized for enterprise deployment)
+- **Python installation**: Python 3.13 via uv (installed to `/opt/python` for non-root access)
+- **Dependency management**: Ultra-fast installation with pre-compiled wheels (milliseconds vs minutes)
+- **Security**: Regular security updates from Red Hat, enterprise-grade support
+- **Compatibility**: OpenShift ready, glibc-based for maximum package compatibility
+
+**Why not Alpine?** While Alpine Linux produces smaller images, it uses musl libc which causes compilation issues with some Python packages (tree-sitter) on arm64 architecture. UBI provides the best balance of size, speed, and compatibility.
 
 ### Running the Development Container
 
@@ -216,6 +232,11 @@ StrictDoc Service provides the following endpoints:
 > |----------------|----------|-----------|---------------------------------------------------------------------------------------------------------------|
 > | format         | optional | string    | Export format: html, html2pdf, rst, json, excel, reqif-sdoc, reqifz-sdoc, sdoc, doxygen, spdx (default: html) |
 > | file_name      | optional | string    | Base name for the output file (default: exported-document)                                                    |
+
+**Note on PDF Export:** The `html2pdf` format is currently **not available** in this service. PDF generation requires Chromium/ChromeDriver, which would increase the Docker image size by ~300MB+. If you need PDF output, consider:
+1. Using the `html` format and converting to PDF externally
+2. Using a separate PDF conversion service
+3. Building a custom image with Chromium installed
 
 ##### Responses
 
