@@ -120,3 +120,28 @@ def test_invalid_sdoc_content(test_parameters: TestParameters) -> None:
 
     assert response.status_code == HTTPStatus.BAD_REQUEST
     assert "Missing [DOCUMENT] section" in response.text or "Invalid SDOC content" in response.text
+
+
+def test_empty_sdoc_body(test_parameters: TestParameters) -> None:
+    """Test providing empty SDOC body."""
+    response = test_parameters.request_session.post(
+        f"{test_parameters.base_url}/export",
+        params={"format": "html", "file_name": "test-export"},
+        data="",
+        headers={"Content-Type": "text/plain"},
+    )
+
+    # Empty body is caught by the validation check in export_document
+    assert response.status_code in {HTTPStatus.BAD_REQUEST, HTTPStatus.UNPROCESSABLE_ENTITY}
+
+
+def test_missing_sdoc_body(test_parameters: TestParameters) -> None:
+    """Test request without SDOC body at all."""
+    response = test_parameters.request_session.post(
+        f"{test_parameters.base_url}/export",
+        params={"format": "html", "file_name": "test-export"},
+        headers={"Content-Type": "text/plain"},
+    )
+
+    # FastAPI returns 422 for missing required body parameter
+    assert response.status_code == HTTPStatus.UNPROCESSABLE_ENTITY
