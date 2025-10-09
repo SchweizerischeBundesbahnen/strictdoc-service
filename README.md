@@ -17,7 +17,7 @@ Built on **Red Hat Universal Base Image (UBI)** for enterprise-grade security, s
 
 ## Features
 
-- Simple REST API to access [StrictDoc](https://github.com/strictdoc-project/strictdoc)
+- Simple REST API to access [StrictDoc](https://github.com/strictdoc-project/strictdoc) **0.14.0**
 - **Red Hat UBI 9 base image** - Enterprise-grade security and OpenShift compatibility
 - **Fast builds** - Pre-compiled wheels, millisecond dependency installation with uv
 - Compatible with amd64 and arm64 architectures
@@ -206,7 +206,7 @@ StrictDoc Service provides the following endpoints:
 
 > | HTTP code | Content-Type       | Response                                                                                                                            |
 > |-----------|--------------------|-------------------------------------------------------------------------------------------------------------------------------------|
-> | `200`     | `application/json` | `{ "python": "3.13.0", "strictdoc": "0.7.0", "strictdocService": "0.0.0", "timestamp": "2024-09-23T12:23:09Z" }` |
+> | `200`     | `application/json` | `{ "python": "3.13.7", "strictdoc": "0.14.0", "strictdocService": "0.0.0", "timestamp": "2025-10-08T12:23:09Z" }` |
 
 ##### Example cURL
 

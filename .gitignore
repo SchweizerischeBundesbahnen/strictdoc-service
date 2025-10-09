@@ -184,6 +184,3 @@ junittest.xml
 test-*
 *db/
 *.sarif
-
-# Claude Code working scratchpad (not committed)
-TODO.md
