@@ -45,6 +45,43 @@ StrictDoc Service is a Dockerized REST API that provides access to [StrictDoc](h
 - ALWAYS run `pre-commit run -a` after implementation
 - NEVER suppress or comment lint or test errors or problems
 
+### Before Committing Changes (MANDATORY)
+
+**ALWAYS perform these steps BEFORE creating any git commit:**
+
+1. **Update TODO.md**:
+   - Move completed tasks from "Current Work" to "Completed Tasks"
+   - Condense descriptions (keep key points only)
+   - Ensure "Current Work" reflects actual current state
+
+2. **Update CLAUDE.md** (if applicable):
+   - Add new commands or patterns discovered during implementation
+   - Update technical details if architecture changed
+   - Document new development practices or gotchas
+   - Update dependency versions in examples if changed
+
+3. **Review changes**:
+   - Run `git status` and `git diff` to verify what will be committed
+   - Ensure TODO.md is NOT staged (it should never be committed)
+   - Ensure CLAUDE.md changes (if any) ARE staged
+
+**This check is MANDATORY before every commit. Do not skip these steps.**
+
+### GitHub PR Code Reviews (Automated Workflow)
+
+**Philosophy**: Reviews should be **terse, actionable, and problem-focused**. No praise, no analysis of unchanged code.
+
+**When reviewing PRs via the automated workflow:**
+- ONLY review lines changed in the PR diff
+- ONLY report actual problems (bugs, security issues, breaking changes, missing tests)
+- Use terse format: `[file:line] Problem - Fix: Solution`
+- If no issues found, say "No issues found." and stop
+- Do NOT: praise code quality, review unchanged code, suggest optional improvements, analyze performance if not changed
+
+**Review categories:**
+- 🔴 **Critical**: Bugs, security vulnerabilities, breaking changes
+- 🟡 **Important**: Missing tests for new functionality, significant issues
+
 ## Development Commands
 
 ### Environment Setup
@@ -171,12 +208,17 @@ uv run uvicorn app.strictdoc_controller:app --host 127.0.0.1 --port 9083
 
 **NEVER use the TodoWrite tool under any circumstances. This is a hard requirement.**
 
+**ALWAYS read `/TODO.md` at the START of EVERY conversation or when the user mentions tasks/work**
+- Read TODO.md BEFORE responding to understand current work context
+- This is NOT optional - it's required to understand what's in progress
+
 **ALWAYS use `/TODO.md` as a working scratchpad during development**
 - **NEVER commit TODO.md** - it's a local working file only, even though it's not in .gitignore
 - Create or update `/TODO.md` at the start of any multi-step task
 - Update task checkboxes when completing work
 - Add new tasks as discovered during implementation
-- Helps track progress within a single issue/PR
+- **When tasks are completed, IMMEDIATELY move them from "Current Work" to "Completed Tasks"**
+- Condense completed task descriptions (keep key points, remove verbose details)
 - Link to GitHub issues for context (e.g., "Issue #59")
 
 **Why TODO.md instead of TodoWrite:**

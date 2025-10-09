@@ -32,14 +32,29 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           prompt: |
-            Please review this pull request and provide feedback on:
-            - Code quality and best practices
-            - Potential bugs or issues
-            - Performance considerations
-            - Security concerns
-            - Test coverage
-            Use the repository's CLAUDE.md for guidance on style and conventions. Be constructive and helpful in your feedback.
-            Use `gh pr comment` with your Bash tool to leave your review as a comment on the PR.
+            Review ONLY the changed lines in this PR diff. Report ONLY actual problems - no praise, no analysis of unchanged code.
+
+            Focus on:
+            - Bugs or logic errors
+            - Security vulnerabilities in changed code
+            - Breaking changes not mentioned in PR description
+            - Missing tests for new functionality
+            - Critical performance issues introduced by changes
+
+            Format (be TERSE):
+            ## Issues Found
+            ### 🔴 Critical
+            - [file:line] Problem description
+            - Fix: How to resolve
+
+            ### 🟡 Important
+            - [file:line] Issue description
+            - Suggestion: Specific fix
+
+            (If no issues: "No issues found.")
+
+            Do NOT review: unchanged code, general code quality, optional improvements, or provide praise.
+            Use `gh pr comment` with your Bash tool to post the review.
 
           # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
           # or https://docs.anthropic.com/en/docs/claude-code/sdk#command-line for available options
