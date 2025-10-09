@@ -184,7 +184,35 @@ Main Context (Your work)
     └─ Receives summary (minimal tokens)
 ```
 
-### 5. Document Agent Purpose
+### 5. Follow Principle of Least Privilege
+
+**Only grant tools the agent actually needs:**
+
+**Good - Minimal permissions:**
+```yaml
+name: context7-docs
+tools: Read, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
+```
+
+**Bad - Unnecessary permissions:**
+```yaml
+name: context7-docs
+tools: Read, Write, Bash, Glob, Grep  # Too many!
+```
+
+**Why:**
+- ✅ Security - Reduces attack surface
+- ✅ Clarity - Shows intent and capabilities
+- ✅ Safety - Prevents accidental modifications
+
+**Tool Permission Guidelines:**
+- `Read` - Almost always needed to read context
+- `Write` - Only if agent creates/updates files
+- `Bash` - Only if agent needs to run commands
+- `Glob/Grep` - Only if agent needs to search
+- MCP tools - Only the specific MCP tools needed
+
+### 6. Document Agent Purpose
 
 Always include in CLAUDE.md:
 ```markdown
@@ -259,10 +287,17 @@ Result: Wasted tokens
 ---
 name: context7-docs
 description: Fetch current documentation for any library/framework using Context7
-tools: Read, Write
+tools: Read, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 ---
 ```
+
+**Tool Permissions:**
+- `Read` - Read local files and project context
+- `mcp__context7__resolve-library-id` - Resolve library names to Context7 IDs
+- `mcp__context7__get-library-docs` - Fetch live documentation from Context7
+
+**Note:** Write permission was removed (not needed for documentation fetching). The agent only needs to read local context and call Context7 MCP tools.
 
 ### ubi-redhat-expert Agent
 
@@ -273,11 +308,30 @@ model: inherit
 - OpenShift compatibility questions
 - RHEL security and compliance
 - UBI vs Alpine decisions
+- Dockerfile optimization for UBI
 
 **Why It Exists:**
 - Specialized domain knowledge not general-purpose
 - UBI has specific patterns and constraints
 - Enterprise/RHEL ecosystem expertise
+
+**Configuration:**
+```markdown
+---
+name: ubi-redhat-expert
+description: Red Hat UBI expert for Dockerfile optimization, package management, security hardening
+tools: Read, Write, Bash, Glob, Grep
+model: inherit
+color: red
+---
+```
+
+**Tool Permissions:**
+- `Read` - Read Dockerfiles, configs, error logs
+- `Write` - Create/update Dockerfiles and configurations
+- `Bash` - Test Docker commands, check package availability
+- `Glob` - Find Dockerfiles in project
+- `Grep` - Search for patterns in Dockerfiles
 
 ## Decision Tree: Do I Need an Agent?
 

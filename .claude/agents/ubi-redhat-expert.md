@@ -1,6 +1,7 @@
 ---
 name: ubi-redhat-expert
 description: Red Hat UBI expert for Dockerfile optimization, package management, security hardening, and troubleshooting.
+tools: Read, Write, Bash, Glob, Grep
 model: inherit
 color: red
 ---
