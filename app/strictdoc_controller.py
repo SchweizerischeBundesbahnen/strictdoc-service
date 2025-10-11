@@ -285,12 +285,15 @@ async def run_strictdoc_command(cmd: list[str]) -> None:
         # Use asyncio.create_subprocess_exec for non-blocking execution
         process = await asyncio.create_subprocess_exec(*cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
 
-        _, stderr = await process.communicate()
+        stdout, stderr = await process.communicate()
 
         if process.returncode != 0:
-            stderr_text = stderr.decode("utf-8") if stderr else "Unknown error"
-            logging.error("StrictDoc CLI error: %s", stderr_text)
-            raise RuntimeError(f"StrictDoc command failed: {stderr_text}")
+            # Capture both stdout and stderr for better error messages
+            stdout_text = stdout.decode("utf-8") if stdout else ""
+            stderr_text = stderr.decode("utf-8") if stderr else ""
+            error_output = (stderr_text + "\n" + stdout_text).strip() or "Unknown error"
+            logging.error("StrictDoc CLI error (returncode=%d): %s", process.returncode, error_output)
+            raise RuntimeError(f"StrictDoc command failed: {error_output}")
 
         if stderr:
             stderr_text = stderr.decode("utf-8")

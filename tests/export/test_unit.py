@@ -109,3 +109,26 @@ def test_invalid_sdoc_content(client: TestClient) -> None:
     # Verify the expected error response
     assert response.status_code == HTTPStatus.BAD_REQUEST
     assert "Missing [DOCUMENT] section" in response.text or "Invalid SDOC content" in response.text
+
+
+def test_empty_sdoc_body(client: TestClient) -> None:
+    """Test providing empty SDOC body."""
+    response = client.post(
+        "/export?format=html&file_name=test-export",
+        content="",
+        headers={"Content-Type": "text/plain"},
+    )
+
+    # Verify the expected error response - FastAPI returns 422 for missing required body
+    assert response.status_code in {HTTPStatus.BAD_REQUEST, HTTPStatus.UNPROCESSABLE_ENTITY}
+
+
+def test_missing_sdoc_body(client: TestClient) -> None:
+    """Test request without SDOC body at all."""
+    response = client.post(
+        "/export?format=html&file_name=test-export",
+        headers={"Content-Type": "text/plain"},
+    )
+
+    # Verify the expected error response - FastAPI returns 422 for missing required body
+    assert response.status_code == HTTPStatus.UNPROCESSABLE_ENTITY
