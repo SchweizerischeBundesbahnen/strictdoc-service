@@ -10,7 +10,7 @@ readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "strictdoc==0.14.0",
-    "fastapi==0.118.2",
+    "fastapi==0.118.3",
     "uvicorn==0.37.0",
     "pathvalidate==3.3.1",
     # pinning version to avoid security issues
@@ -24,7 +24,7 @@ dev = [
     "mypy==1.18.2",
 ]
 test = [
-    "tox==4.30.3",
+    "tox==4.31.0",
     # for debug source code for pytest --> see tox.ini section [testenv]
     "docker==7.1.0",
     "pytest==8.4.2",
