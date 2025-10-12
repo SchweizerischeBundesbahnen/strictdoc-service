@@ -82,6 +82,73 @@ StrictDoc Service is a Dockerized REST API that provides access to [StrictDoc](h
 - 🔴 **Critical**: Bugs, security vulnerabilities, breaking changes
 - 🟡 **Important**: Missing tests for new functionality, significant issues
 
+### Skip Reviews For (Automated Tools Handle These)
+
+**The following are already checked by automated tools - DO NOT comment on them:**
+
+**Formatting & Style** (handled by Ruff):
+- Line length (configured to 240 characters)
+- Import ordering and organization
+- Indentation and whitespace
+- Quotation mark consistency
+- Trailing commas
+- Line breaks and blank lines
+
+**Type Checking** (handled by MyPy):
+- Type annotations and hints
+- Type compatibility
+- Return type correctness
+- Optional/None handling
+
+**Code Quality** (handled by Ruff linter):
+- Unused imports and variables
+- Undefined names
+- F-string usage
+- List/dict comprehension simplification
+- Mutable default arguments
+- Shadowed variables
+
+**Testing** (handled by Pytest + Coverage):
+- Test coverage (minimum 80% required)
+- Async test configuration
+- Test discovery and execution
+
+**Pre-commit Hooks**:
+- YAML formatting (yamlfix)
+- General formatting issues
+- Trailing whitespace
+
+**Don't suggest these common patterns (already established in codebase):**
+- Using Ruff instead of Black/isort/flake8
+- Using uv for package management
+- Python 3.13+ syntax and features
+- FastAPI patterns already in use
+- Temporary file handling patterns in export functionality
+
+### Project-Specific Review Focus
+
+**DO focus on:**
+1. **Security**:
+   - Proper input sanitization (check `sanitize_for_logging()` usage)
+   - Path traversal prevention
+   - SQL injection in any new database queries
+   - Secrets exposure in logs
+
+2. **StrictDoc Integration**:
+   - Correct error handling for TextXSyntaxError
+   - Proper use of SDReader for validation
+   - Export format handling consistency
+
+3. **Resource Management**:
+   - Temporary file cleanup (BackgroundTask usage)
+   - Proper async/await patterns
+   - Memory leaks in export operations
+
+4. **Breaking Changes**:
+   - API endpoint changes
+   - Response format changes
+   - Docker image compatibility
+
 ## Development Commands
 
 ### Environment Setup
