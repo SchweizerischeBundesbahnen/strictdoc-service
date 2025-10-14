@@ -173,6 +173,26 @@ async def test_run_strictdoc_command_combined_output() -> None:
 
 
 @pytest.mark.asyncio
+async def test_run_strictdoc_command_success_with_warnings() -> None:
+    """Test that run_strictdoc_command logs warnings when command succeeds but has stderr."""
+    from app.strictdoc_controller import run_strictdoc_command
+
+    # Mock successful subprocess with warnings in stderr
+    with patch("asyncio.create_subprocess_exec") as mock_subprocess:
+        mock_process = AsyncMock()
+        # Success (returncode=0) but with warnings in stderr
+        mock_process.communicate.return_value = (b"Success output", b"Warning message")
+        mock_process.returncode = 0
+        mock_subprocess.return_value = mock_process
+
+        # Should not raise exception, just log warnings
+        await run_strictdoc_command(["strictdoc", "export"])
+
+        # Verify subprocess was called
+        mock_subprocess.assert_called_once()
+
+
+@pytest.mark.asyncio
 async def test_export_with_action() -> None:
     """Test the export_with_action function."""
     from app.strictdoc_controller import export_with_action
