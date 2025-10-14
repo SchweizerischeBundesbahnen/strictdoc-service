@@ -112,10 +112,10 @@ async def test_run_strictdoc_command_success() -> None:
 
 @pytest.mark.asyncio
 async def test_run_strictdoc_command_failure() -> None:
-    """Test failure handling in run_strictdoc_command."""
+    """Test failure handling in run_strictdoc_command with stderr."""
     from app.strictdoc_controller import run_strictdoc_command
 
-    # Mock failed subprocess
+    # Mock failed subprocess with stderr
     with patch("asyncio.create_subprocess_exec") as mock_subprocess:
         mock_process = AsyncMock()
         mock_process.communicate.return_value = (b"", b"Error occurred")
@@ -126,6 +126,50 @@ async def test_run_strictdoc_command_failure() -> None:
             await run_strictdoc_command(["false"])
 
         assert "StrictDoc command failed" in str(exc_info.value)
+        assert "Error occurred" in str(exc_info.value)
+
+
+@pytest.mark.asyncio
+async def test_run_strictdoc_command_stdout_capture() -> None:
+    """Test that run_strictdoc_command captures stdout in addition to stderr."""
+    from app.strictdoc_controller import run_strictdoc_command
+
+    # Mock failed subprocess with error in stdout (like StrictDoc does)
+    with patch("asyncio.create_subprocess_exec") as mock_subprocess:
+        mock_process = AsyncMock()
+        # StrictDoc writes errors to stdout, not stderr
+        mock_process.communicate.return_value = (b"StrictDoc error on stdout", b"")
+        mock_process.returncode = 1
+        mock_subprocess.return_value = mock_process
+
+        with pytest.raises(RuntimeError) as exc_info:
+            await run_strictdoc_command(["strictdoc", "export"])
+
+        # Verify stdout is captured in the error message
+        assert "StrictDoc command failed" in str(exc_info.value)
+        assert "StrictDoc error on stdout" in str(exc_info.value)
+
+
+@pytest.mark.asyncio
+async def test_run_strictdoc_command_combined_output() -> None:
+    """Test that run_strictdoc_command captures both stdout and stderr."""
+    from app.strictdoc_controller import run_strictdoc_command
+
+    # Mock failed subprocess with output in both stdout and stderr
+    with patch("asyncio.create_subprocess_exec") as mock_subprocess:
+        mock_process = AsyncMock()
+        mock_process.communicate.return_value = (b"Output on stdout", b"Error on stderr")
+        mock_process.returncode = 1
+        mock_subprocess.return_value = mock_process
+
+        with pytest.raises(RuntimeError) as exc_info:
+            await run_strictdoc_command(["command"])
+
+        error_message = str(exc_info.value)
+        # Verify both stdout and stderr are in the error message
+        assert "StrictDoc command failed" in error_message
+        assert "Error on stderr" in error_message
+        assert "Output on stdout" in error_message
 
 
 @pytest.mark.asyncio
