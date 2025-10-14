@@ -1,5 +1,6 @@
 """Tests for uvloop compatibility."""
 
+import asyncio
 import sys
 
 import pytest
@@ -64,6 +65,54 @@ def test_uvloop_must_be_available() -> None:
                 f"- Installation problems\n\n"
                 f"Check that uvicorn[standard] is properly installed."
             )
+
+
+@pytest.mark.asyncio
+async def test_uvloop_event_loop_functionality() -> None:
+    """Test that uvloop can actually create and run an event loop.
+
+    This test goes beyond import checking and verifies that uvloop can
+    actually function as an event loop replacement. This catches issues
+    where uvloop imports successfully but fails at runtime.
+
+    Common failure scenarios:
+    - Python 3.14 on some platforms: compiles but has runtime issues
+    - Missing system dependencies
+    - Incompatible asyncio changes
+    """
+    python_version = sys.version_info
+
+    try:
+        import uvloop
+
+        # Try to install uvloop as the event loop policy
+        uvloop.install()
+
+        # Create a simple async function to test the event loop
+        async def simple_task():
+            await asyncio.sleep(0)
+            return "uvloop works"
+
+        # Run a simple task with uvloop
+        result = await simple_task()
+
+        assert result == "uvloop works", "uvloop event loop should execute async tasks"
+
+        print(f"✅ uvloop event loop functional on Python {python_version.major}.{python_version.minor}.{python_version.micro}")
+
+    except Exception as e:
+        error_msg = str(e)
+        pytest.fail(
+            f"❌ uvloop event loop FAILED on Python {python_version.major}.{python_version.minor}\n\n"
+            f"Error: {error_msg}\n\n"
+            f"uvloop imported successfully but failed to function as an event loop.\n"
+            f"This indicates a runtime compatibility issue.\n\n"
+            f"SOLUTIONS:\n"
+            f"1. Check if your Python version is fully supported by uvloop\n"
+            f"2. Downgrade to Python 3.13.x (recommended)\n"
+            f"3. Remove uvloop by changing 'uvicorn[standard]' to 'uvicorn' in pyproject.toml\n\n"
+            f"See: https://github.com/MagicStack/uvloop/issues/637"
+        )
 
 
 def test_uvicorn_has_uvloop_extras() -> None:
