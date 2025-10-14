@@ -67,8 +67,7 @@ def test_uvloop_must_be_available() -> None:
             )
 
 
-@pytest.mark.asyncio
-async def test_uvloop_event_loop_functionality() -> None:
+def test_uvloop_event_loop_functionality() -> None:
     """Test that uvloop can actually create and run an event loop.
 
     This test goes beyond import checking and verifies that uvloop can
@@ -82,11 +81,24 @@ async def test_uvloop_event_loop_functionality() -> None:
     """
     python_version = sys.version_info
 
+    # Save the original event loop policy to restore after test
+    original_policy = asyncio.get_event_loop_policy()
+
     try:
         import uvloop
 
         # Try to install uvloop as the event loop policy
         uvloop.install()
+
+        # Create a new event loop to use uvloop (existing loop won't change)
+        new_loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(new_loop)
+
+        # Verify uvloop is actually being used, not just asyncio
+        assert "uvloop" in type(new_loop).__module__, (
+            f"uvloop.install() did not activate uvloop. "
+            f"Current event loop type: {type(new_loop).__module__}.{type(new_loop).__name__}"
+        )
 
         # Create a simple async function to test the event loop
         async def simple_task():
@@ -94,11 +106,14 @@ async def test_uvloop_event_loop_functionality() -> None:
             return "uvloop works"
 
         # Run a simple task with uvloop
-        result = await simple_task()
+        result = new_loop.run_until_complete(simple_task())
 
         assert result == "uvloop works", "uvloop event loop should execute async tasks"
 
         print(f"✅ uvloop event loop functional on Python {python_version.major}.{python_version.minor}.{python_version.micro}")
+
+        # Clean up the loop
+        new_loop.close()
 
     except Exception as e:
         error_msg = str(e)
@@ -113,6 +128,9 @@ async def test_uvloop_event_loop_functionality() -> None:
             f"3. Remove uvloop by changing 'uvicorn[standard]' to 'uvicorn' in pyproject.toml\n\n"
             f"See: https://github.com/MagicStack/uvloop/issues/637"
         )
+    finally:
+        # Restore the original event loop policy to prevent side effects
+        asyncio.set_event_loop_policy(original_policy)
 
 
 def test_uvicorn_has_uvloop_extras() -> None:
