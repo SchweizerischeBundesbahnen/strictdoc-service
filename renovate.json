@@ -42,20 +42,6 @@
         "python"
       ],
       "matchUpdateTypes": [
-        "patch"
-      ],
-      "semanticCommitType": "chore",
-      "commitMessageTopic": "Python version",
-      "automerge": true
-    },
-    {
-      "matchManagers": [
-        "asdf"
-      ],
-      "matchDepNames": [
-        "python"
-      ],
-      "matchUpdateTypes": [
         "major",
         "minor"
       ],
