@@ -41,8 +41,13 @@
       "matchDepNames": [
         "python"
       ],
+      "matchUpdateTypes": [
+        "major",
+        "minor"
+      ],
       "semanticCommitType": "chore",
-      "commitMessageTopic": "Python version"
+      "commitMessageTopic": "Python version",
+      "automerge": false
     }
   ]
 }
