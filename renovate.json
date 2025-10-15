@@ -42,13 +42,26 @@
         "python"
       ],
       "matchUpdateTypes": [
+        "patch"
+      ],
+      "semanticCommitType": "chore",
+      "commitMessageTopic": "Python version",
+      "automerge": true
+    },
+    {
+      "matchManagers": [
+        "asdf"
+      ],
+      "matchDepNames": [
+        "python"
+      ],
+      "matchUpdateTypes": [
         "major",
         "minor"
       ],
       "semanticCommitType": "chore",
       "commitMessageTopic": "Python version",
-      "automerge": false,
-      "description": "Python major/minor version updates require manual review due to potential platform-specific compatibility issues (e.g., uvloop on arm64). Patch updates auto-merge. See issue #72"
+      "automerge": false
     }
   ]
 }
