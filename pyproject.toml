@@ -10,7 +10,7 @@ readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "strictdoc==0.14.0",
-    "fastapi==0.120.2",
+    "fastapi==0.120.4",
     "uvicorn==0.38.0",
     "pathvalidate==3.3.1",
     # pinning version to avoid security issues
