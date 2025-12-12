@@ -8,9 +8,9 @@ import re
 import shutil
 import sys
 import tempfile
-from collections.abc import Awaitable, Callable
 from http import HTTPStatus
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import uvicorn
 from fastapi import Body, FastAPI, HTTPException, Query
@@ -19,8 +19,6 @@ from fastapi.responses import FileResponse, JSONResponse
 from pathvalidate import sanitize_filename
 from pydantic import BaseModel
 from starlette.background import BackgroundTask
-from starlette.requests import Request
-from starlette.responses import Response
 
 # Import StrictDoc version directly
 from strictdoc import __version__ as strictdoc_version  # type: ignore[import]
@@ -29,6 +27,12 @@ from strictdoc.backend.sdoc.reader import SDReader  # type: ignore[import]
 from strictdoc.cli.main import ProjectConfig  # type: ignore[import]
 
 from app.sanitization import normalize_line_endings, sanitize_for_logging
+
+if TYPE_CHECKING:
+    from collections.abc import Awaitable, Callable
+
+    from starlette.requests import Request
+    from starlette.responses import Response
 
 # Create a custom logger
 logger = logging.getLogger(__name__)
