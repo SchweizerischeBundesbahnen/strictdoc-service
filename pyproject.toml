@@ -14,7 +14,7 @@ dependencies = [
     "uvicorn==0.40.0",
     "pathvalidate==3.3.1",
     # pinning version to avoid security issues
-    "urllib3==2.6.2",
+    "urllib3==2.6.3",
 ]
 
 [dependency-groups]
