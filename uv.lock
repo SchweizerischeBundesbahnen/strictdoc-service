@@ -300,7 +300,7 @@ wheels = [
 
 [[package]]
 name = "html2pdf4doc"
-version = "0.0.25"
+version = "0.0.31"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "pypdf" },
@@ -308,9 +308,9 @@ dependencies = [
     { name = "selenium" },
     { name = "webdriver-manager" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/bc/5c/f7bd1855ff7c779c0b4dc140c356a9700c8779dd9bc39b58d26d47011422/html2pdf4doc-0.0.25.tar.gz", hash = "sha256:a600defbe0033c154e80ad7e249fbba0176585f03c0d38da4c0ef56f66be49ba", size = 54481, upload-time = "2025-12-18T19:26:49.135Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/ac/d2/dfbc3fc96fc1daff146d34b1a03a8db520d0f6b508f714cdce6e27445f94/html2pdf4doc-0.0.31.tar.gz", hash = "sha256:209fe15ff68e4858fb9ed1159f7eafa921add8a915a676a1ad508b2d493ecff9", size = 58502, upload-time = "2025-12-31T19:59:43.929Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/04/fd/9e264dfeb933629add739b79b0b885db13c976c6274d3fe9d158f7bb2a54/html2pdf4doc-0.0.25-py3-none-any.whl", hash = "sha256:455057f2e6f36ee0cb3ac36be6bed05c1e17b697b0132cde85d0a8052d7f1bb5", size = 56513, upload-time = "2025-12-18T19:26:47.633Z" },
+    { url = "https://files.pythonhosted.org/packages/24/03/6b5cd964c3d747999b557fe075d28fe18afa00a4af8e50ce1bec7dd4adaa/html2pdf4doc-0.0.31-py3-none-any.whl", hash = "sha256:3186a7317bfcaa294d878f8ae16183d5e14188c3165cf276aaec73df12d6db2f", size = 60585, upload-time = "2025-12-31T19:59:42.514Z" },
 ]
 
 [[package]]
@@ -1178,7 +1178,7 @@ wheels = [
 
 [[package]]
 name = "strictdoc"
-version = "0.15.3"
+version = "0.16.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "beautifulsoup4" },
@@ -1208,9 +1208,9 @@ dependencies = [
     { name = "xlrd" },
     { name = "xlsxwriter" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/32/4c/9d78739292214bc1e1ce33e3ba9e088d6a85b6f0eeef8099711ff8567359/strictdoc-0.15.3.tar.gz", hash = "sha256:8a59a68e00c9e5c417bf4afecd4a8671de9cf18a2a9061add1281996a352aa92", size = 6003656, upload-time = "2025-12-18T21:33:12.511Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/6d/da/d98047b79c45962aca0d9aef79fe839465a987f4cfcad241ff98e0964273/strictdoc-0.16.1.tar.gz", hash = "sha256:0513ca7a27e95730296489c63298ba210b1615b57d9fd501a9ac79a82c61b8a9", size = 6007535, upload-time = "2026-01-06T18:22:17.413Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/af/7d/145afc32bb13e4589232483d9cd5d538325a6b54c10114097145acb6c204/strictdoc-0.15.3-py3-none-any.whl", hash = "sha256:6dafef3abc75b09776ad6fd4db1ff95d66cf772b01a80298a486f431eaa5bcd1", size = 6269344, upload-time = "2025-12-18T21:33:00.004Z" },
+    { url = "https://files.pythonhosted.org/packages/25/41/30473ca8254f7e29ce87ab21d4054139ccfb61ccca43bf7eee0f0d678f1c/strictdoc-0.16.1-py3-none-any.whl", hash = "sha256:2f0695345458229c3f380ba79868f15394b85b6fb330149d1dfaf25e238f642c", size = 6277945, upload-time = "2026-01-06T18:22:06.507Z" },
 ]
 
 [[package]]
@@ -1245,7 +1245,7 @@ test = [
 requires-dist = [
     { name = "fastapi", specifier = "==0.128.0" },
     { name = "pathvalidate", specifier = "==3.3.1" },
-    { name = "strictdoc", specifier = "==0.15.3" },
+    { name = "strictdoc", specifier = "==0.16.1" },
     { name = "urllib3", specifier = "==2.6.3" },
     { name = "uvicorn", specifier = "==0.40.0" },
 ]
