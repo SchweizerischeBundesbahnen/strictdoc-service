@@ -24,7 +24,7 @@ from starlette.background import BackgroundTask
 from strictdoc import __version__ as strictdoc_version  # type: ignore[import]
 from strictdoc.backend.sdoc.pickle_cache import PickleCache  # type: ignore[import]
 from strictdoc.backend.sdoc.reader import SDReader  # type: ignore[import]
-from strictdoc.cli.main import ProjectConfig  # type: ignore[import]
+from strictdoc.core.project_config import ProjectConfig  # type: ignore[import]
 
 from app.sanitization import normalize_line_endings, sanitize_for_logging
 
