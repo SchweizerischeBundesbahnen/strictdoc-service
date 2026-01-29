@@ -1200,7 +1200,7 @@ wheels = [
 
 [[package]]
 name = "strictdoc"
-version = "0.16.3"
+version = "0.16.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "beautifulsoup4" },
@@ -1230,9 +1230,9 @@ dependencies = [
     { name = "xlrd" },
     { name = "xlsxwriter" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/21/04/dc3d48dc423cc6fa54ba2c97a9bd63f37e7ce2c278d2b1322ceb35715011/strictdoc-0.16.3.tar.gz", hash = "sha256:76020654e3df1eaa40d7396ce0b43a99fd4457f8d7342dcd97cf702b476bf3b4", size = 6008120, upload-time = "2026-01-18T16:26:15.971Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/bb/41/eae5b4b41898a8e4f79bde92d26adb6426674f9fdaf396e2e721526677b6/strictdoc-0.16.4.tar.gz", hash = "sha256:16a3e4bf16d001b610028918892379966e7cf59255675e0d0070ce09c44c8c0d", size = 6008174, upload-time = "2026-01-28T22:04:05.043Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/80/29/c08b395e140357339a6063ff6502c034cfc0e556b37a0055accf4fc853a0/strictdoc-0.16.3-py3-none-any.whl", hash = "sha256:5a9ad04d711fb84c83c22b3f8f2b2a5bb93ac1738d6f5d3ab332ef5981ce1ff3", size = 6278201, upload-time = "2026-01-18T16:26:13.157Z" },
+    { url = "https://files.pythonhosted.org/packages/f9/c4/9877054523c7b78048320225f5667aeaee7288726f142127d251ecd9ec13/strictdoc-0.16.4-py3-none-any.whl", hash = "sha256:b2520ecc5c226f0418f60aa6a139b137a0b48f88c788d875f9e2cabfeeb87edf", size = 6278236, upload-time = "2026-01-28T21:08:14.328Z" },
 ]
 
 [[package]]
@@ -1267,7 +1267,7 @@ test = [
 requires-dist = [
     { name = "fastapi", specifier = "==0.128.0" },
     { name = "pathvalidate", specifier = "==3.3.1" },
-    { name = "strictdoc", specifier = "==0.16.3" },
+    { name = "strictdoc", specifier = "==0.16.4" },
     { name = "urllib3", specifier = "==2.6.3" },
     { name = "uvicorn", specifier = "==0.40.0" },
 ]
