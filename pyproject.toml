@@ -13,6 +13,8 @@ dependencies = [
     "fastapi==0.133.0",
     "uvicorn==0.41.0",
     "pathvalidate==3.3.1",
+    "prometheus-client>=0.22.0",
+    "prometheus-fastapi-instrumentator>=7.1.0",
     # pinning version to avoid security issues
     "urllib3==2.6.3",
 ]
@@ -72,6 +74,13 @@ extend-select = [
     "F405", # undefined-local-with-import-star-usage (pyflakes)
     "F403", # No import * (pyflakes)
 ]
+"app/strictdoc_controller.py" = [
+    "PLW0603", # Global statement for metrics server singleton
+    "PLR0915", # Too many statements in export_document (complex export logic)
+]
+"app/strictdoc_metrics.py" = [
+    "PLW0603", # Global statement for singleton pattern
+]
 
 [tool.ruff.format]
 line-ending = "lf"
@@ -85,6 +94,15 @@ disallow_untyped_defs = true
 exclude = "tests/.*"
 install_types = true
 non_interactive = true
+
+[[tool.mypy.overrides]]
+module = [
+    "prometheus_client",
+    "prometheus_client.*",
+    "prometheus_fastapi_instrumentator",
+    "prometheus_fastapi_instrumentator.*",
+]
+ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
