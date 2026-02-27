@@ -93,6 +93,8 @@ class MetricsServer:
 
             # Start server in background task
             self._task = asyncio.create_task(server.serve())
+            # Yield control to allow the server task to start
+            await asyncio.sleep(0)
             logger.info("Metrics server started on port %d", self.port)
 
         except OSError as e:
@@ -104,6 +106,6 @@ class MetricsServer:
         if self._task is not None:
             self._task.cancel()
             with contextlib.suppress(asyncio.CancelledError):
-                await self._task
+                await self._task  # noqa: B905
             self._task = None
             logger.info("Metrics server stopped")

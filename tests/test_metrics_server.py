@@ -1,12 +1,11 @@
 """Tests for the dedicated metrics server."""
 
-import asyncio
 from unittest.mock import AsyncMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
 
-from app.metrics_server import MetricsServer, get_metrics, health_check, metrics_app
+import app.metrics_server
 from app.strictdoc_metrics import get_strictdoc_metrics, reset_strictdoc_metrics
 
 
@@ -21,7 +20,7 @@ def reset_metrics():
 @pytest.fixture
 def metrics_client():
     """Create a test client for the metrics app."""
-    return TestClient(metrics_app)
+    return TestClient(app.metrics_server.metrics_app)
 
 
 class TestMetricsEndpoint:
@@ -70,7 +69,7 @@ class TestMetricsServer:
     @pytest.mark.asyncio
     async def test_server_initialization(self):
         """Test that MetricsServer initializes with correct port."""
-        server = MetricsServer(port=9999)
+        server = app.metrics_server.MetricsServer(port=9999)
         assert server.port == 9999
         assert server._task is None
 
@@ -78,14 +77,14 @@ class TestMetricsServer:
     async def test_server_start_disabled(self):
         """Test that server doesn't start when disabled."""
         with patch("app.metrics_server.METRICS_SERVER_ENABLED", False):
-            server = MetricsServer()
+            server = app.metrics_server.MetricsServer()
             await server.start()
             assert server._task is None
 
     @pytest.mark.asyncio
     async def test_server_stop_when_not_started(self):
         """Test that stopping a non-started server doesn't raise errors."""
-        server = MetricsServer()
+        server = app.metrics_server.MetricsServer()
         await server.stop()  # Should not raise
 
     @pytest.mark.asyncio
@@ -96,7 +95,7 @@ class TestMetricsServer:
                 mock_server = AsyncMock()
                 mock_server_class.return_value = mock_server
 
-                server = MetricsServer(port=19183)
+                server = app.metrics_server.MetricsServer(port=19183)
 
                 # Start server
                 await server.start()
@@ -112,15 +111,13 @@ class TestMetricsServerConfiguration:
 
     def test_default_port(self):
         """Test default metrics port."""
-        from app.metrics_server import DEFAULT_METRICS_PORT
-        assert DEFAULT_METRICS_PORT == 9183
+        assert app.metrics_server.DEFAULT_METRICS_PORT == 9183
 
     def test_port_validation(self):
         """Test that invalid port falls back to default."""
         with patch.dict("os.environ", {"METRICS_PORT": "70000"}):
             # Re-import to pick up new env var
             import importlib
-            import app.metrics_server
             importlib.reload(app.metrics_server)
 
             # Port should be validated to default
@@ -136,12 +133,12 @@ class TestAsyncEndpoints:
     @pytest.mark.asyncio
     async def test_get_metrics_async(self):
         """Test get_metrics endpoint directly."""
-        response = await get_metrics()
+        response = await app.metrics_server.get_metrics()
         assert response.status_code == 200
         assert b"strictdoc" in response.body
 
     @pytest.mark.asyncio
     async def test_health_check_async(self):
         """Test health_check endpoint directly."""
-        result = await health_check()
+        result = await app.metrics_server.health_check()
         assert result == {"status": "healthy"}

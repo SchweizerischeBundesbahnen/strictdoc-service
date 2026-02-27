@@ -1,7 +1,6 @@
 """Tests for Prometheus metrics collectors."""
 
 import pytest
-from prometheus_client import REGISTRY
 
 from app.prometheus_metrics import (
     active_exports,

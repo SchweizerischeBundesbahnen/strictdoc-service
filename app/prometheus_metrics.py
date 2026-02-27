@@ -103,7 +103,6 @@ def increment_export_failure(export_format: str) -> None:
     Args:
         export_format: The export format (e.g., 'html', 'pdf').
     """
-    strictdoc_exports_total.labels(format=export_format).inc()
     strictdoc_export_failures_total.labels(format=export_format).inc()
 
 
