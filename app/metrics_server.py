@@ -79,7 +79,7 @@ class MetricsServer:
             port: Port to run the metrics server on.
         """
         self.port = port
-        self._server: asyncio.Server | None = None
+        self._server: uvicorn.Server | None = None
         self._task: asyncio.Task[None] | None = None
 
     async def start(self) -> None:
@@ -95,10 +95,10 @@ class MetricsServer:
                 port=self.port,
                 log_level="warning",
             )
-            server = uvicorn.Server(config)
+            self._server = uvicorn.Server(config)
 
             # Start server in background task
-            self._task = asyncio.create_task(server.serve())
+            self._task = asyncio.create_task(self._server.serve())
             # Yield control to allow the server task to start
             await asyncio.sleep(0)
             logger.info("Metrics server started on port %d", self.port)
@@ -108,10 +108,20 @@ class MetricsServer:
             raise
 
     async def stop(self) -> None:
-        """Stop the metrics server."""
+        """Stop the metrics server gracefully."""
+        if self._server is not None:
+            # Signal uvicorn to exit gracefully (allows proper cleanup)
+            self._server.should_exit = True
+
         if self._task is not None:
-            self._task.cancel()
-            with contextlib.suppress(asyncio.CancelledError):
-                await self._task  # noqa: B905
+            try:
+                # Wait for the server to shut down with a timeout
+                await asyncio.wait_for(self._task, timeout=5.0)
+            except TimeoutError:
+                # Force cancel if graceful shutdown takes too long
+                self._task.cancel()
+                with contextlib.suppress(asyncio.CancelledError):
+                    await self._task  # noqa: B905
             self._task = None
+            self._server = None
             logger.info("Metrics server stopped")

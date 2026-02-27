@@ -78,6 +78,15 @@ class StrictDocMetrics:
         """
         return time.time() - self.start_time
 
+    def get_active_exports(self) -> int:
+        """Get the current number of active exports (thread-safe).
+
+        Returns:
+            Number of active export operations.
+        """
+        with self._lock:
+            return self.active_exports
+
     def get_snapshot(self) -> dict[str, float | int]:
         """Get a snapshot of current metrics.
 

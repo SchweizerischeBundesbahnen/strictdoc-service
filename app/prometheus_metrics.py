@@ -13,6 +13,25 @@ from app.strictdoc_metrics import get_strictdoc_metrics
 # Get service version from environment
 SERVICE_VERSION = os.getenv("STRICTDOC_SERVICE_VERSION", "dev")
 
+# Valid export formats (used for label validation to prevent cardinality explosion)
+VALID_EXPORT_FORMATS = frozenset({"doxygen", "excel", "html", "html2pdf", "json", "reqif-sdoc", "reqifz-sdoc", "rst", "sdoc", "spdx"})
+
+
+def _sanitize_format_label(export_format: str) -> str:
+    """Sanitize export format for use as Prometheus label.
+
+    Validates the format against the allowlist to prevent label cardinality explosion
+    from malicious or invalid input.
+
+    Args:
+        export_format: The export format string.
+
+    Returns:
+        The format if valid, otherwise "unknown".
+    """
+    return export_format if export_format in VALID_EXPORT_FORMATS else "unknown"
+
+
 # Import StrictDoc version
 try:
     from strictdoc import __version__ as strictdoc_version  # type: ignore[import-untyped]
@@ -22,7 +41,7 @@ except ImportError:
 # Counters
 strictdoc_exports_total = Counter(
     "strictdoc_exports_total",
-    "Total number of StrictDoc export operations",
+    "Total number of successful StrictDoc export operations",
     ["format"],
 )
 
@@ -94,7 +113,8 @@ def increment_export_success(export_format: str) -> None:
     Args:
         export_format: The export format (e.g., 'html', 'pdf').
     """
-    strictdoc_exports_total.labels(format=export_format).inc()
+    safe_format = _sanitize_format_label(export_format)
+    strictdoc_exports_total.labels(format=safe_format).inc()
 
 
 def increment_export_failure(export_format: str) -> None:
@@ -103,7 +123,8 @@ def increment_export_failure(export_format: str) -> None:
     Args:
         export_format: The export format (e.g., 'html', 'pdf').
     """
-    strictdoc_export_failures_total.labels(format=export_format).inc()
+    safe_format = _sanitize_format_label(export_format)
+    strictdoc_export_failures_total.labels(format=safe_format).inc()
 
 
 def observe_export_duration(export_format: str, duration_seconds: float) -> None:
@@ -113,7 +134,8 @@ def observe_export_duration(export_format: str, duration_seconds: float) -> None
         export_format: The export format (e.g., 'html', 'pdf').
         duration_seconds: The duration in seconds.
     """
-    strictdoc_export_duration_seconds.labels(format=export_format).observe(duration_seconds)
+    safe_format = _sanitize_format_label(export_format)
+    strictdoc_export_duration_seconds.labels(format=safe_format).observe(duration_seconds)
 
 
 def observe_request_body_size(size_bytes: int) -> None:
@@ -140,4 +162,4 @@ def update_gauges_from_strictdoc_metrics() -> None:
     strictdoc_export_error_rate_percent.set(metrics.get_error_rate_percent())
     avg_strictdoc_export_time_seconds.set(metrics.get_avg_export_time_seconds())
     uptime_seconds.set(metrics.get_uptime_seconds())
-    active_exports.set(metrics.active_exports)
+    active_exports.set(metrics.get_active_exports())

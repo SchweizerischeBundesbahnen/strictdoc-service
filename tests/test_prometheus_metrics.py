@@ -47,15 +47,25 @@ class TestCounters:
 
     def test_increment_export_failure(self):
         """Test incrementing failed export counter."""
-        # Get initial values
-        initial_total = strictdoc_exports_total.labels(format="pdf")._value.get()
-        initial_failures = strictdoc_export_failures_total.labels(format="pdf")._value.get()
+        # Get initial values (use valid format "json")
+        initial_total = strictdoc_exports_total.labels(format="json")._value.get()
+        initial_failures = strictdoc_export_failures_total.labels(format="json")._value.get()
 
-        increment_export_failure("pdf")
+        increment_export_failure("json")
 
         # Only failure counter should increment, not total (total is for successful exports only)
-        assert strictdoc_exports_total.labels(format="pdf")._value.get() == initial_total
-        assert strictdoc_export_failures_total.labels(format="pdf")._value.get() == initial_failures + 1
+        assert strictdoc_exports_total.labels(format="json")._value.get() == initial_total
+        assert strictdoc_export_failures_total.labels(format="json")._value.get() == initial_failures + 1
+
+    def test_invalid_format_sanitized_to_unknown(self):
+        """Test that invalid formats are sanitized to 'unknown' to prevent label cardinality explosion."""
+        initial_unknown = strictdoc_export_failures_total.labels(format="unknown")._value.get()
+
+        # Use an invalid format that should be sanitized
+        increment_export_failure("malicious_format_12345")
+
+        # Should increment the "unknown" label, not create a new one
+        assert strictdoc_export_failures_total.labels(format="unknown")._value.get() == initial_unknown + 1
 
 
 class TestHistograms:
