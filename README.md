@@ -268,7 +268,8 @@ scrape_configs:
 sum(rate(strictdoc_exports_total[5m])) by (format)
 
 # Error rate percentage
-rate(strictdoc_export_failures_total[5m]) / rate(strictdoc_exports_total[5m]) * 100
+strictdoc_export_error_rate_percent
+
 
 # 95th percentile export duration
 histogram_quantile(0.95, rate(strictdoc_export_duration_seconds_bucket[5m]))

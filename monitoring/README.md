@@ -113,7 +113,9 @@ rate(strictdoc_exports_total[5m])
 
 ### Error Rate (%)
 ```promql
-rate(strictdoc_export_failures_total[5m]) / rate(strictdoc_exports_total[5m]) * 100
+# Use pre-computed gauge ()
+strictdoc_export_error_rate_percent
+
 ```
 
 ### P95 Response Time
