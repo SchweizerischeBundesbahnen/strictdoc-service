@@ -53,8 +53,8 @@ class TestCounters:
 
         increment_export_failure("pdf")
 
-        # Both counters should increment for failures
-        assert strictdoc_exports_total.labels(format="pdf")._value.get() == initial_total + 1
+        # Only failure counter should increment, not total (total is for successful exports only)
+        assert strictdoc_exports_total.labels(format="pdf")._value.get() == initial_total
         assert strictdoc_export_failures_total.labels(format="pdf")._value.get() == initial_failures + 1
 
 

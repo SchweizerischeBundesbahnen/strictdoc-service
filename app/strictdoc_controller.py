@@ -494,16 +494,21 @@ async def export_document(
         safe_sanitized_name = sanitize_for_logging(sanitized_file_name)
         logging.warning("Sanitized filename from %r to %r", safe_original_name, safe_sanitized_name)
 
-    # Basic validation of SDOC content
-    if not sdoc_content or "[DOCUMENT]" not in sdoc_content:
-        metrics.record_export_failure()
-        increment_export_failure(export_format)
-        raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail="Invalid SDOC content: Missing [DOCUMENT] section")
-
-    # Track request body size
-    observe_request_body_size(len(sdoc_content.encode("utf-8")))
+    # Flag to track whether we've recorded the export completion (success or failure)
+    # This ensures active_exports gauge is always decremented, even on asyncio.CancelledError
+    export_completed = False
 
     try:
+        # Basic validation of SDOC content
+        if not sdoc_content or "[DOCUMENT]" not in sdoc_content:
+            metrics.record_export_failure()
+            increment_export_failure(export_format)
+            export_completed = True
+            raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail="Invalid SDOC content: Missing [DOCUMENT] section")
+
+        # Track request body size
+        observe_request_body_size(len(sdoc_content.encode("utf-8")))
+
         # Create temporary directories for processing
         with tempfile.TemporaryDirectory() as temp_dir:
             temp_dir_path = Path(temp_dir)
@@ -562,22 +567,32 @@ async def export_document(
             metrics.record_export_success(duration_ms)
             increment_export_success(export_format)
             observe_export_duration(export_format, duration_ms / 1000)
+            export_completed = True
 
             # Return the exported file
             return FileResponse(path=str(persistent_temp_file), media_type=media_type, filename=secure_filename, background=BackgroundTask(cleanup_temp_file))
 
     except HTTPException:
-        # Record failure metrics
-        metrics.record_export_failure()
-        increment_export_failure(export_format)
+        # Record failure metrics (if not already recorded)
+        if not export_completed:
+            metrics.record_export_failure()
+            increment_export_failure(export_format)
+            export_completed = True
         # Re-raise HTTP exceptions
         raise
     except Exception as e:
         # Record failure metrics
         metrics.record_export_failure()
         increment_export_failure(export_format)
+        export_completed = True
         logging.exception(f"Export failed: {e!s}")
         raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail=f"Export failed: {e!s}") from e
+    finally:
+        # Ensure metrics are recorded even on asyncio.CancelledError (which is a BaseException)
+        if not export_completed:
+            metrics.record_export_failure()
+            increment_export_failure(export_format)
+            logging.warning("Export cancelled (client disconnect or timeout)")
 
 
 def validate_export_paths(persistent_temp_file: Path, temp_dir_resolved: Path, export_file: Path, output_dir: Path) -> None:

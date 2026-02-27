@@ -20,13 +20,19 @@ logger = logging.getLogger(__name__)
 
 # Environment variables for configuration
 DEFAULT_METRICS_PORT = 9183
-METRICS_PORT = int(os.getenv("METRICS_PORT", str(DEFAULT_METRICS_PORT)))
 METRICS_SERVER_ENABLED = os.getenv("METRICS_SERVER_ENABLED", "true").lower() == "true"
 
-# Validate port range
+# Parse METRICS_PORT with error handling for non-integer values
 MIN_PORT = 1
 MAX_PORT = 65535
 
+try:
+    METRICS_PORT = int(os.getenv("METRICS_PORT", str(DEFAULT_METRICS_PORT)))
+except ValueError:
+    logger.warning("Invalid METRICS_PORT value, using default %d", DEFAULT_METRICS_PORT)
+    METRICS_PORT = DEFAULT_METRICS_PORT
+
+# Validate port range
 if not MIN_PORT <= METRICS_PORT <= MAX_PORT:
     logger.warning("Invalid METRICS_PORT %d, using default %d", METRICS_PORT, DEFAULT_METRICS_PORT)
     METRICS_PORT = DEFAULT_METRICS_PORT
