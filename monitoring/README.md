@@ -113,7 +113,7 @@ rate(strictdoc_exports_total[5m])
 
 ### Error Rate (%)
 ```promql
-# Use pre-computed gauge ()
+# Use pre-computed error rate gauge (percent)
 strictdoc_export_error_rate_percent
 
 ```

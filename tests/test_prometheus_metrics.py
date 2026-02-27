@@ -22,6 +22,38 @@ from app.prometheus_metrics import (
 from app.strictdoc_metrics import get_strictdoc_metrics, reset_strictdoc_metrics
 
 
+def get_counter_value(counter, labels: dict[str, str]) -> float:
+    """Get counter value using public prometheus_client API.
+
+    Args:
+        counter: Prometheus Counter metric.
+        labels: Dict of label name to label value.
+
+    Returns:
+        Current counter value, or 0.0 if not found.
+    """
+    for metric in counter.collect():
+        for sample in metric.samples:
+            if sample.name.endswith("_total") and sample.labels == labels:
+                return sample.value
+    return 0.0
+
+
+def get_gauge_value(gauge) -> float:
+    """Get gauge value using public prometheus_client API.
+
+    Args:
+        gauge: Prometheus Gauge metric.
+
+    Returns:
+        Current gauge value, or 0.0 if not found.
+    """
+    for metric in gauge.collect():
+        for sample in metric.samples:
+            return sample.value
+    return 0.0
+
+
 @pytest.fixture(autouse=True)
 def reset_metrics():
     """Reset internal metrics before each test."""
@@ -36,36 +68,36 @@ class TestCounters:
     def test_increment_export_success(self):
         """Test incrementing successful export counter."""
         # Get initial values
-        initial_total = strictdoc_exports_total.labels(format="html")._value.get()
-        initial_failures = strictdoc_export_failures_total.labels(format="html")._value.get()
+        initial_total = get_counter_value(strictdoc_exports_total, {"format": "html"})
+        initial_failures = get_counter_value(strictdoc_export_failures_total, {"format": "html"})
 
         increment_export_success("html")
 
         # Check incremented
-        assert strictdoc_exports_total.labels(format="html")._value.get() == initial_total + 1
-        assert strictdoc_export_failures_total.labels(format="html")._value.get() == initial_failures
+        assert get_counter_value(strictdoc_exports_total, {"format": "html"}) == initial_total + 1
+        assert get_counter_value(strictdoc_export_failures_total, {"format": "html"}) == initial_failures
 
     def test_increment_export_failure(self):
         """Test incrementing failed export counter."""
         # Get initial values (use valid format "json")
-        initial_total = strictdoc_exports_total.labels(format="json")._value.get()
-        initial_failures = strictdoc_export_failures_total.labels(format="json")._value.get()
+        initial_total = get_counter_value(strictdoc_exports_total, {"format": "json"})
+        initial_failures = get_counter_value(strictdoc_export_failures_total, {"format": "json"})
 
         increment_export_failure("json")
 
         # Only failure counter should increment, not total (total is for successful exports only)
-        assert strictdoc_exports_total.labels(format="json")._value.get() == initial_total
-        assert strictdoc_export_failures_total.labels(format="json")._value.get() == initial_failures + 1
+        assert get_counter_value(strictdoc_exports_total, {"format": "json"}) == initial_total
+        assert get_counter_value(strictdoc_export_failures_total, {"format": "json"}) == initial_failures + 1
 
     def test_invalid_format_sanitized_to_unknown(self):
         """Test that invalid formats are sanitized to 'unknown' to prevent label cardinality explosion."""
-        initial_unknown = strictdoc_export_failures_total.labels(format="unknown")._value.get()
+        initial_unknown = get_counter_value(strictdoc_export_failures_total, {"format": "unknown"})
 
         # Use an invalid format that should be sanitized
         increment_export_failure("malicious_format_12345")
 
         # Should increment the "unknown" label, not create a new one
-        assert strictdoc_export_failures_total.labels(format="unknown")._value.get() == initial_unknown + 1
+        assert get_counter_value(strictdoc_export_failures_total, {"format": "unknown"}) == initial_unknown + 1
 
 
 class TestHistograms:
@@ -115,10 +147,10 @@ class TestGauges:
         update_gauges_from_strictdoc_metrics()
 
         # Check gauge values
-        assert strictdoc_export_error_rate_percent._value.get() == 50.0
-        assert avg_strictdoc_export_time_seconds._value.get() == 1.0
-        assert uptime_seconds._value.get() > 0
-        assert active_exports._value.get() == 0  # Both exports completed
+        assert get_gauge_value(strictdoc_export_error_rate_percent) == 50.0
+        assert get_gauge_value(avg_strictdoc_export_time_seconds) == 1.0
+        assert get_gauge_value(uptime_seconds) > 0
+        assert get_gauge_value(active_exports) == 0  # Both exports completed
 
     def test_update_gauges_with_active_exports(self):
         """Test that active exports gauge reflects in-progress work."""
@@ -129,7 +161,7 @@ class TestGauges:
 
         update_gauges_from_strictdoc_metrics()
 
-        assert active_exports._value.get() == 2
+        assert get_gauge_value(active_exports) == 2
 
 
 class TestMetricLabels:
@@ -138,12 +170,12 @@ class TestMetricLabels:
     def test_different_format_labels(self):
         """Test that different formats have separate counters."""
         # Get initial values
-        html_initial = strictdoc_exports_total.labels(format="html")._value.get()
-        json_initial = strictdoc_exports_total.labels(format="json")._value.get()
+        html_initial = get_counter_value(strictdoc_exports_total, {"format": "html"})
+        json_initial = get_counter_value(strictdoc_exports_total, {"format": "json"})
 
         increment_export_success("html")
         increment_export_success("html")
         increment_export_success("json")
 
-        assert strictdoc_exports_total.labels(format="html")._value.get() == html_initial + 2
-        assert strictdoc_exports_total.labels(format="json")._value.get() == json_initial + 1
+        assert get_counter_value(strictdoc_exports_total, {"format": "html"}) == html_initial + 2
+        assert get_counter_value(strictdoc_exports_total, {"format": "json"}) == json_initial + 1
