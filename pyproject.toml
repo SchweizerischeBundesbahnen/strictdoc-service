@@ -10,7 +10,7 @@ readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
     "strictdoc==0.18.0",
-    "fastapi==0.133.0",
+    "fastapi==0.133.1",
     "uvicorn==0.41.0",
     "pathvalidate==3.3.1",
     "prometheus-client>=0.22.0",
@@ -22,11 +22,11 @@ dependencies = [
 [dependency-groups]
 dev = [
     "pre-commit==4.5.1",
-    "ruff==0.15.2",
+    "ruff==0.15.4",
     "mypy==1.19.1",
 ]
 test = [
-    "tox==4.45.0",
+    "tox==4.46.3",
     # for debug source code for pytest --> see tox.ini section [testenv]
     "docker==7.1.0",
     "pytest==9.0.2",
