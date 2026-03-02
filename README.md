@@ -216,6 +216,127 @@ StrictDoc Service provides the following endpoints:
 
 </details>
 
+## Monitoring
+
+### Prometheus & Grafana Integration
+
+The service exposes Prometheus-compatible metrics for comprehensive monitoring and observability through Grafana dashboards.
+
+**Metrics Endpoint:** `/metrics` on port 9183 (dedicated metrics port)
+
+> **Security:** The metrics endpoint is served on a separate port (9183) from the main API (9083). This allows network-level isolation using security groups or firewall rules to restrict metrics access to your Prometheus server only.
+
+**Available Metrics:**
+
+**Export Metrics:**
+- `strictdoc_exports_total{format}` - Total successful exports (labeled by format: html, json, excel, etc.)
+- `strictdoc_export_failures_total{format}` - Total failed exports (labeled by format)
+- `strictdoc_export_error_rate_percent` - Export error rate as percentage
+
+**Performance Metrics:**
+- `strictdoc_export_duration_seconds{format}` - Export duration histogram (labeled by format)
+- `avg_strictdoc_export_time_seconds` - Average export time in seconds
+- `strictdoc_request_body_bytes` - Input document size histogram
+- `strictdoc_response_body_bytes` - Output document size histogram
+
+**Service Metrics:**
+- `uptime_seconds` - Service uptime
+- `active_exports` - Current number of active export operations
+- `strictdoc_info{version, service_version}` - Version information
+
+**HTTP Metrics (via prometheus-fastapi-instrumentator):**
+- `http_request_duration_seconds` - HTTP request duration histogram
+- `http_requests_total` - Total HTTP requests
+- `http_requests_inprogress` - Current in-progress requests
+
+**Prometheus Configuration Example:**
+
+```yaml
+scrape_configs:
+  - job_name: 'strictdoc-service'
+    static_configs:
+      - targets: ['strictdoc-service:9183']  # Metrics on dedicated port
+    metrics_path: '/metrics'
+    scrape_interval: 15s
+    scrape_timeout: 10s
+```
+
+**Grafana Dashboard Queries:**
+
+```promql
+# Export rate by format (requests per second)
+sum(rate(strictdoc_exports_total[5m])) by (format)
+
+# Error rate percentage
+strictdoc_export_error_rate_percent
+
+
+# 95th percentile export duration
+histogram_quantile(0.95, rate(strictdoc_export_duration_seconds_bucket[5m]))
+
+# Average export time
+avg_strictdoc_export_time_seconds
+```
+
+**Docker Compose Example with Prometheus & Grafana:**
+
+```yaml
+services:
+  strictdoc-service:
+    image: ghcr.io/schweizerischebundesbahnen/strictdoc-service:latest
+    init: true
+    ports:
+      - "9083:9083"   # Main API
+      - "9183:9183"   # Metrics endpoint
+
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+
+volumes:
+  prometheus-data:
+  grafana-data:
+```
+
+**Quick Start with Monitoring Stack:**
+
+A complete monitoring setup is provided in the `monitoring/` directory:
+
+```bash
+# Start StrictDoc service with Prometheus and Grafana
+./monitoring/start-monitoring.sh
+
+# Generate test load
+./monitoring/generate-load.sh 100 20
+
+# Stop monitoring stack
+./monitoring/stop-monitoring.sh
+```
+
+**Access URLs:**
+| Service | URL | Credentials |
+|---------|-----|-------------|
+| StrictDoc Service | http://localhost:9083 | - |
+| API Docs | http://localhost:9083/docs | - |
+| Raw Metrics | http://localhost:9183/metrics | - |
+| Prometheus | http://localhost:9090 | - |
+| Grafana Dashboard | http://localhost:3000/d/strictdoc-service | admin/admin |
+
+See [monitoring/README.md](monitoring/README.md) for detailed setup instructions.
+
 
 ------------------------------------------------------------------------------------------
 

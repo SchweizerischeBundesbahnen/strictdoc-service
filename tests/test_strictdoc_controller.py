@@ -467,6 +467,9 @@ async def test_sanitize_filename_is_called() -> None:
 
     with tempfile.TemporaryDirectory() as temp_dir:
         temp_dir_path = Path(temp_dir)
+        # Create the export file so stat() works
+        export_file = temp_dir_path / "test.sdoc"
+        export_file.write_text("test content")
 
         with patch("app.strictdoc_controller.export_to_format") as mock_export, patch(
             "app.strictdoc_controller.sanitize_filename"
@@ -474,7 +477,7 @@ async def test_sanitize_filename_is_called() -> None:
             "tempfile.gettempdir", return_value=str(temp_dir_path)
         ), patch("shutil.copy2"), patch("app.strictdoc_controller.FileResponse"):
             # Mock export_to_format to return a valid file
-            mock_export.return_value = (temp_dir_path / "test.sdoc", "sdoc", "text/plain")
+            mock_export.return_value = (export_file, "sdoc", "text/plain")
             mock_sanitize.return_value = "safe_filename"
 
             # Call the function
@@ -492,6 +495,8 @@ async def test_successful_validation_with_safe_paths() -> None:
     with tempfile.TemporaryDirectory() as temp_dir:
         temp_dir_path = Path(temp_dir)
         output_file = temp_dir_path / "test.sdoc"
+        # Create the export file so stat() works
+        output_file.write_text("test content")
 
         with patch("app.strictdoc_controller.export_to_format") as mock_export, \
              patch("tempfile.gettempdir", return_value=str(temp_dir_path)), \
@@ -526,6 +531,8 @@ async def test_path_normalization() -> None:
     with tempfile.TemporaryDirectory() as temp_dir:
         temp_dir_path = Path(temp_dir)
         output_file = temp_dir_path / "test.txt"
+        # Create the export file so stat() works
+        output_file.write_text("test content")
 
         with patch("app.strictdoc_controller.export_to_format") as mock_export, \
              patch("app.strictdoc_controller.validate_export_paths") as mock_validate, \

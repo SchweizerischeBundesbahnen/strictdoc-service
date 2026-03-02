@@ -8,6 +8,8 @@ import re
 import shutil
 import sys
 import tempfile
+import time
+from contextlib import asynccontextmanager
 from http import HTTPStatus
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -17,6 +19,7 @@ from fastapi import Body, FastAPI, HTTPException, Query
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse
 from pathvalidate import sanitize_filename
+from prometheus_fastapi_instrumentator import Instrumentator
 from pydantic import BaseModel
 from starlette.background import BackgroundTask
 
@@ -26,10 +29,13 @@ from strictdoc.backend.sdoc.pickle_cache import PickleCache  # type: ignore[impo
 from strictdoc.backend.sdoc.reader import SDReader  # type: ignore[import]
 from strictdoc.core.project_config import ProjectConfig  # type: ignore[import]
 
+from app.metrics_server import MetricsServer
+from app.prometheus_metrics import increment_export_failure, increment_export_success, observe_export_duration, observe_request_body_size, observe_response_body_size
 from app.sanitization import normalize_line_endings, sanitize_for_logging
+from app.strictdoc_metrics import get_strictdoc_metrics
 
 if TYPE_CHECKING:
-    from collections.abc import Awaitable, Callable
+    from collections.abc import AsyncGenerator, Awaitable, Callable
 
     from starlette.requests import Request
     from starlette.responses import Response
@@ -59,11 +65,53 @@ DEFAULT_SERVER_HOST = "127.0.0.1"
 DEFAULT_SERVER_PORT = 5111
 DEFAULT_SECTION_BEHAVIOR = "[SECTION]"
 
+# Global metrics server instance
+_metrics_server: MetricsServer | None = None
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
+    """Manage application lifecycle including metrics server.
+
+    Args:
+        app: The FastAPI application instance.
+
+    Yields:
+        None
+    """
+    global _metrics_server
+    _metrics_server = MetricsServer()
+    await _metrics_server.start()
+    logger.info("Application started with metrics server")
+    try:
+        yield
+    finally:
+        if _metrics_server is not None:
+            await _metrics_server.stop()
+            logger.info("Application shutdown complete")
+
+
 app = FastAPI(
     title="StrictDoc Service API",
     description="API for StrictDoc document generation and export",
     version="1.0.0",
+    lifespan=lifespan,
 )
+
+# Add Prometheus FastAPI Instrumentator for HTTP metrics
+ENABLE_METRICS = os.getenv("ENABLE_METRICS", "true").lower() == "true"
+if ENABLE_METRICS:
+    instrumentator = Instrumentator(
+        should_group_status_codes=True,
+        should_ignore_untemplated=True,
+        should_respect_env_var=True,
+        should_instrument_requests_inprogress=True,
+        excluded_handlers=["/metrics", "/health"],
+        env_var_name="ENABLE_METRICS",
+        inprogress_name="http_requests_inprogress",
+        inprogress_labels=True,
+    )
+    instrumentator.instrument(app)
 
 
 # Add exception handler for FastAPI's validation errors
@@ -424,6 +472,11 @@ async def export_document(
         FileResponse: The exported file
 
     """
+    # Track metrics
+    metrics = get_strictdoc_metrics()
+    metrics.record_export_start()
+    start_time = time.time()
+
     # Sanitize user input for logging
     sanitized_format = sanitize_for_logging(format)
     sanitized_file_name = sanitize_for_logging(file_name)
@@ -441,11 +494,21 @@ async def export_document(
         safe_sanitized_name = sanitize_for_logging(sanitized_file_name)
         logging.warning("Sanitized filename from %r to %r", safe_original_name, safe_sanitized_name)
 
-    # Basic validation of SDOC content
-    if not sdoc_content or "[DOCUMENT]" not in sdoc_content:
-        raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail="Invalid SDOC content: Missing [DOCUMENT] section")
+    # Flag to track whether we've recorded the export completion (success or failure)
+    # This ensures active_exports gauge is always decremented, even on asyncio.CancelledError
+    export_completed = False
 
     try:
+        # Basic validation of SDOC content
+        if not sdoc_content or "[DOCUMENT]" not in sdoc_content:
+            metrics.record_export_failure()
+            increment_export_failure(export_format)
+            export_completed = True
+            raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail="Invalid SDOC content: Missing [DOCUMENT] section")
+
+        # Track request body size
+        observe_request_body_size(len(sdoc_content.encode("utf-8")))
+
         # Create temporary directories for processing
         with tempfile.TemporaryDirectory() as temp_dir:
             temp_dir_path = Path(temp_dir)
@@ -480,6 +543,10 @@ async def export_document(
             # Validate all paths to prevent path traversal
             validate_export_paths(persistent_temp_file, temp_dir_resolved, export_file, output_dir)
 
+            # Track response body size before copying (export_file exists at this point)
+            response_size = export_file.stat().st_size
+            observe_response_body_size(response_size)
+
             # Copy the file
             shutil.copy2(export_file, persistent_temp_file)
 
@@ -495,15 +562,37 @@ async def export_document(
                 except Exception as e:
                     logging.exception("Failed to clean up temporary file: %s", str(e))
 
+            # Record successful export metrics
+            duration_ms = (time.time() - start_time) * 1000
+            metrics.record_export_success(duration_ms)
+            increment_export_success(export_format)
+            observe_export_duration(export_format, duration_ms / 1000)
+            export_completed = True
+
             # Return the exported file
             return FileResponse(path=str(persistent_temp_file), media_type=media_type, filename=secure_filename, background=BackgroundTask(cleanup_temp_file))
 
     except HTTPException:
+        # Record failure metrics (if not already recorded)
+        if not export_completed:
+            metrics.record_export_failure()
+            increment_export_failure(export_format)
+            export_completed = True
         # Re-raise HTTP exceptions
         raise
     except Exception as e:
+        # Record failure metrics
+        metrics.record_export_failure()
+        increment_export_failure(export_format)
+        export_completed = True
         logging.exception(f"Export failed: {e!s}")
         raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail=f"Export failed: {e!s}") from e
+    finally:
+        # Ensure metrics are recorded even on asyncio.CancelledError (which is a BaseException)
+        if not export_completed:
+            metrics.record_export_failure()
+            increment_export_failure(export_format)
+            logging.warning("Export cancelled (client disconnect or timeout)")
 
 
 def validate_export_paths(persistent_temp_file: Path, temp_dir_resolved: Path, export_file: Path, output_dir: Path) -> None:
