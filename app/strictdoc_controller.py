@@ -474,8 +474,7 @@ async def export_document(
     """
     # Track metrics
     metrics = get_strictdoc_metrics()
-    metrics.record_export_start()
-    start_time = time.time()
+    start_time = time.perf_counter()
 
     # Sanitize user input for logging
     sanitized_format = sanitize_for_logging(format)
@@ -499,6 +498,9 @@ async def export_document(
     export_completed = False
 
     try:
+        # Record export start inside try block to ensure finally always decrements
+        metrics.record_export_start()
+
         # Basic validation of SDOC content
         if not sdoc_content or "[DOCUMENT]" not in sdoc_content:
             metrics.record_export_failure()
@@ -563,7 +565,7 @@ async def export_document(
                     logging.exception("Failed to clean up temporary file: %s", str(e))
 
             # Record successful export metrics
-            duration_ms = (time.time() - start_time) * 1000
+            duration_ms = (time.perf_counter() - start_time) * 1000
             metrics.record_export_success(duration_ms)
             increment_export_success(export_format)
             observe_export_duration(export_format, duration_ms / 1000)

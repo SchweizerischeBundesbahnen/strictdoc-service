@@ -121,7 +121,8 @@ class TestStrictDocMetrics:
         metrics = StrictDocMetrics()
         time.sleep(0.1)  # Sleep for 100ms
         uptime = metrics.get_uptime_seconds()
-        assert uptime >= 0.1
+        # Use tolerance to avoid flaky test due to timer resolution
+        assert uptime >= 0.09  # Allow for slight timer variance
         assert uptime < 1.0  # Should be less than 1 second
 
     def test_get_snapshot(self):

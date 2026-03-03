@@ -21,7 +21,7 @@ class StrictDocMetrics:
     failed_exports: int = 0
     active_exports: int = 0
     total_export_time_ms: float = 0.0
-    start_time: float = field(default_factory=time.time)
+    start_time: float = field(default_factory=time.monotonic)
     _lock: threading.RLock = field(default_factory=threading.RLock, repr=False)
 
     def record_export_start(self) -> None:
@@ -76,7 +76,7 @@ class StrictDocMetrics:
         Returns:
             Uptime in seconds.
         """
-        return time.time() - self.start_time
+        return time.monotonic() - self.start_time
 
     def get_active_exports(self) -> int:
         """Get the current number of active exports (thread-safe).
