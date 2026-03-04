@@ -81,14 +81,21 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     """
     global _metrics_server
     _metrics_server = MetricsServer()
-    await _metrics_server.start()
-    logger.info("Application started with metrics server")
+
+    # Metrics server startup is non-fatal - main service should work without metrics
+    try:
+        await _metrics_server.start()
+        logger.info("Application started with metrics server")
+    except Exception:
+        logger.exception("Failed to start metrics server - continuing without metrics")
+        _metrics_server = None
+
     try:
         yield
     finally:
         if _metrics_server is not None:
             await _metrics_server.stop()
-            logger.info("Application shutdown complete")
+        logger.info("Application shutdown complete")
 
 
 app = FastAPI(
