@@ -8,13 +8,11 @@ import os
 
 from prometheus_client import Counter, Gauge, Histogram, Info
 
+from app.constants import VALID_EXPORT_FORMATS
 from app.strictdoc_metrics import get_strictdoc_metrics
 
 # Get service version from environment
 SERVICE_VERSION = os.getenv("STRICTDOC_SERVICE_VERSION", "dev")
-
-# Valid export formats (used for label validation to prevent cardinality explosion)
-VALID_EXPORT_FORMATS = frozenset({"doxygen", "excel", "html", "html2pdf", "json", "reqif-sdoc", "reqifz-sdoc", "rst", "sdoc", "spdx"})
 
 
 def _sanitize_format_label(export_format: str) -> str:

@@ -29,7 +29,8 @@ from strictdoc.backend.sdoc.pickle_cache import PickleCache  # type: ignore[impo
 from strictdoc.backend.sdoc.reader import SDReader  # type: ignore[import]
 from strictdoc.core.project_config import ProjectConfig  # type: ignore[import]
 
-from app.metrics_server import MetricsServer
+from app.constants import EXPORT_FORMATS
+from app.metrics_server import METRICS_SERVER_ENABLED, MetricsServer
 from app.prometheus_metrics import increment_export_failure, increment_export_success, observe_export_duration, observe_request_body_size, observe_response_body_size
 from app.sanitization import normalize_line_endings, sanitize_for_logging
 from app.strictdoc_metrics import get_strictdoc_metrics
@@ -42,20 +43,6 @@ if TYPE_CHECKING:
 
 # Create a custom logger
 logger = logging.getLogger(__name__)
-
-# Define supported export formats with their file extensions and mime types
-EXPORT_FORMATS = {
-    "doxygen": {"extension": "xml", "mime_type": "application/xml"},
-    "excel": {"extension": "xlsx", "mime_type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"},
-    "html": {"extension": "zip", "mime_type": "application/zip"},
-    "html2pdf": {"extension": "pdf", "mime_type": "application/pdf"},
-    "json": {"extension": "json", "mime_type": "application/json"},
-    "reqif-sdoc": {"extension": "reqif", "mime_type": "application/xml"},
-    "reqifz-sdoc": {"extension": "reqifz", "mime_type": "application/zip"},
-    "rst": {"extension": "rst", "mime_type": "text/x-rst"},
-    "sdoc": {"extension": "sdoc", "mime_type": "text/plain"},
-    "spdx": {"extension": "spdx", "mime_type": "text/plain"},
-}
 
 # Default values for StrictDoc ProjectConfig (v0.14.0+)
 # These replace the removed DEFAULT_* class constants
@@ -80,15 +67,19 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
         None
     """
     global _metrics_server
-    _metrics_server = MetricsServer()
 
-    # Metrics server startup is non-fatal - main service should work without metrics
-    try:
-        await _metrics_server.start()
-        logger.info("Application started with metrics server")
-    except Exception:
-        logger.exception("Failed to start metrics server - continuing without metrics")
-        _metrics_server = None
+    # Only create and start metrics server if enabled (avoids port binding in tests)
+    if METRICS_SERVER_ENABLED:
+        _metrics_server = MetricsServer()
+        # Metrics server startup is non-fatal - main service should work without metrics
+        try:
+            await _metrics_server.start()
+            logger.info("Application started with metrics server")
+        except Exception:
+            logger.exception("Failed to start metrics server - continuing without metrics")
+            _metrics_server = None
+    else:
+        logger.info("Application started (metrics server disabled)")
 
     try:
         yield
