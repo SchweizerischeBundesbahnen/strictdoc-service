@@ -13,6 +13,7 @@ services:
       - STRICTDOC_SERVICE_VERSION=dev
       - PORT=9083
       - METRICS_PORT=9183
+      - METRICS_SERVER_ENABLED=true
     networks:
       - monitoring
     healthcheck:

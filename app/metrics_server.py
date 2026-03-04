@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 # Environment variables for configuration
 DEFAULT_METRICS_PORT = 9183
-METRICS_SERVER_ENABLED = os.getenv("METRICS_SERVER_ENABLED", "true").lower() == "true"
+METRICS_SERVER_ENABLED = os.getenv("METRICS_SERVER_ENABLED", "false").lower() == "true"
 
 # Parse METRICS_PORT with error handling for non-integer values
 MIN_PORT = 1
