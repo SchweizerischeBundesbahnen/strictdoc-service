@@ -17,9 +17,10 @@ Built on **Red Hat Universal Base Image (UBI)** for enterprise-grade security, s
 
 ## Features
 
-- Simple REST API to access [StrictDoc](https://github.com/strictdoc-project/strictdoc) **0.14.0**
+- Simple REST API to access [StrictDoc](https://github.com/strictdoc-project/strictdoc) **0.18.1**
 - **Red Hat UBI 9 base image** - Enterprise-grade security and OpenShift compatibility
 - **Fast builds** - Pre-compiled wheels, millisecond dependency installation with uv
+- **Prometheus metrics** - Built-in monitoring with dedicated metrics endpoint (port 9183)
 - Compatible with amd64 and arm64 architectures
 - Easily deployable via Docker or Docker Compose
 - Configurable port and logging level
@@ -52,11 +53,12 @@ To start the StrictDoc service container, execute:
 docker run --detach \
   --init \
   --publish 9083:9083 \
+  --publish 9183:9183 \
   --name strictdoc-service \
   ghcr.io/schweizerischebundesbahnen/strictdoc-service:latest
 ```
 
-The service will be accessible on port 9083.
+The service will be accessible on port 9083, with Prometheus metrics on port 9183.
 
 #### Using Docker Compose
 
@@ -177,6 +179,7 @@ To start the Docker container with your custom-built image:
 docker run --detach \
   --init \
   --publish 9083:9083 \
+  --publish 9183:9183 \
   --name strictdoc-service \
   strictdoc-service:0.0.0
 ```

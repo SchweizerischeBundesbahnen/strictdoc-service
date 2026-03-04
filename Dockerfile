@@ -9,6 +9,7 @@ ENV WORKING_DIR="/opt/strictdoc" \
     STRICTDOC_SERVICE_VERSION=${APP_IMAGE_VERSION} \
     PYTHONUNBUFFERED=1 \
     PORT=9083 \
+    METRICS_PORT=9183 \
     LOG_LEVEL=INFO
 
 WORKDIR ${WORKING_DIR}
@@ -65,7 +66,7 @@ RUN chmod -R a+rX /opt/python && \
 # Switch to non-root user
 USER appuser
 
-EXPOSE ${PORT}
+EXPOSE ${PORT} ${METRICS_PORT}
 
 # Healthcheck
 HEALTHCHECK --interval=5s --timeout=3s --start-period=5s --retries=3 \
