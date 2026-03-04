@@ -88,24 +88,30 @@ class MetricsServer:
             logger.info("Metrics server disabled via METRICS_SERVER_ENABLED=false")
             return
 
-        try:
-            config = uvicorn.Config(
-                metrics_app,
-                host="0.0.0.0",  # noqa: S104 - Intentional binding for container environments
-                port=self.port,
-                log_level="warning",
-            )
-            self._server = uvicorn.Server(config)
+        config = uvicorn.Config(
+            metrics_app,
+            host="0.0.0.0",  # noqa: S104 - Intentional binding for container environments
+            port=self.port,
+            log_level="warning",
+        )
+        self._server = uvicorn.Server(config)
 
-            # Start server in background task
-            self._task = asyncio.create_task(self._server.serve())
-            # Yield control to allow the server task to start
-            await asyncio.sleep(0)
-            logger.info("Metrics server started on port %d", self.port)
+        # Start server in background task
+        self._task = asyncio.create_task(self._server.serve())
 
-        except OSError as e:
-            logger.exception("Failed to start metrics server on port %d: %s", self.port, e)
-            raise
+        # Allow time for the server to attempt port binding
+        await asyncio.sleep(0.1)
+
+        # Check if the task failed during startup (e.g., port already in use)
+        if self._task.done():
+            exc = self._task.exception()
+            if exc is not None:
+                self._task = None
+                self._server = None
+                logger.error("Failed to start metrics server on port %d: %s", self.port, exc)
+                raise exc
+
+        logger.info("Metrics server started on port %d", self.port)
 
     async def stop(self) -> None:
         """Stop the metrics server gracefully."""
