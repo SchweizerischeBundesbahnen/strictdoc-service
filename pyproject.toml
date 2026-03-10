@@ -13,7 +13,7 @@ dependencies = [
     "fastapi==0.135.1",
     "uvicorn==0.41.0",
     "pathvalidate==3.3.1",
-    "prometheus-client==0.22.0",
+    "prometheus-client==0.24.1",
     "prometheus-fastapi-instrumentator==7.1.0",
     # pinning version to avoid security issues
     "urllib3==2.6.3",
