@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.14.1](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/compare/v0.14.0...v0.14.1) (2026-03-13)
+
+
+### Bug Fixes
+
+* **deps:** update dependency prometheus-client to v0.24.1 ([48f041f](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/48f041fcad64f310c1ea0ca46bdf5a163a3c52c0))
+
 ## 0.14.0 (2026-03-10)
 
 
