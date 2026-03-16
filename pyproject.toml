@@ -22,7 +22,7 @@ dependencies = [
 [dependency-groups]
 dev = [
     "pre-commit==4.5.1",
-    "ruff==0.15.5",
+    "ruff==0.15.6",
     "mypy==1.19.1",
 ]
 test = [
