@@ -236,7 +236,7 @@ async def get_version() -> VersionInfo:
         try:
             timestamp = timestamp_file.read_text().strip()
         except Exception as e:
-            logging.warning(f"Failed to read build timestamp: {e}")
+            logger.warning("Failed to read build timestamp: %s", e)
 
     return VersionInfo(python=python_version, strictdoc=strictdoc_version, platform=platform_info, timestamp=timestamp, strictdoc_service=service_version)
 
@@ -315,7 +315,7 @@ def process_sdoc_content(content: str, input_file: Path) -> None:
             else:
                 error_msg = "Syntax error in SDOC document. Please check your document structure."
 
-        logging.exception("SDOC parsing error: %s", error_msg)
+        logger.exception("SDOC parsing error: %s", error_msg)
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=error_msg) from e
 
 
@@ -329,7 +329,7 @@ async def run_strictdoc_command(cmd: list[str]) -> None:
         RuntimeError: If the command fails or returns non-zero exit code
     """
     sanitized_cmd = [sanitize_for_logging(arg) for arg in cmd]
-    logging.info("Running command: %s", " ".join(sanitized_cmd))
+    logger.info("Running command: %s", " ".join(sanitized_cmd))
 
     try:
         # Use asyncio.create_subprocess_exec for non-blocking execution
@@ -342,15 +342,15 @@ async def run_strictdoc_command(cmd: list[str]) -> None:
             stdout_text = stdout.decode("utf-8") if stdout else ""
             stderr_text = stderr.decode("utf-8") if stderr else ""
             error_output = (stderr_text + "\n" + stdout_text).strip() or "Unknown error"
-            logging.error("StrictDoc CLI error (returncode=%d): %s", process.returncode, error_output)
+            logger.error("StrictDoc CLI error (returncode=%d): %s", process.returncode, error_output)
             raise RuntimeError(f"StrictDoc command failed: {error_output}")
 
         if stderr:
             stderr_text = stderr.decode("utf-8")
-            logging.warning("StrictDoc CLI warnings: %s", stderr_text)
+            logger.warning("StrictDoc CLI warnings: %s", stderr_text)
 
     except Exception as e:
-        logging.exception("Command execution failed: %s", str(e))
+        logger.exception("Command execution failed: %s", str(e))
         raise RuntimeError(f"Command execution failed: {e!s}") from e
 
 
@@ -370,7 +370,7 @@ async def export_with_action(input_file: Path, output_dir: Path, format_name: st
         cmd = ["strictdoc", "export", "--formats", format_name, "--output-dir", str(output_dir), str(input_file)]
         await run_strictdoc_command(cmd)
     except Exception as e:
-        logging.exception("Export failed: %s", str(e))
+        logger.exception("Export failed: %s", str(e))
         raise RuntimeError(f"Export failed: {e!s}") from e
 
 
@@ -402,7 +402,7 @@ async def export_to_format(input_file: Path, output_dir: Path, export_format: st
         # Call export_with_action for the actual export
         await export_with_action(input_file, output_dir, export_format)
     except Exception as e:
-        logging.exception("Export failed: %s", str(e))
+        logger.exception("Export failed: %s", str(e))
         raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail=f"Export to {export_format} failed: {e!s}") from e
 
     # For HTML, we need to zip the output directory
@@ -449,7 +449,7 @@ def find_exported_file(output_dir: Path, export_format: str, extension: str) -> 
     if not exported_files:
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=f"No {extension} file found in output after export")
 
-    logging.info("Found exported file: %s", exported_files[0])
+    logger.info("Found exported file: %s", exported_files[0])
     return exported_files[0]
 
 
@@ -477,7 +477,7 @@ async def export_document(
     # Sanitize user input for logging
     sanitized_format = sanitize_for_logging(format)
     sanitized_file_name = sanitize_for_logging(file_name)
-    logging.info("Export requested for format: %r, filename: %r", sanitized_format, sanitized_file_name)
+    logger.info("Export requested for format: %r, filename: %r", sanitized_format, sanitized_file_name)
 
     # Validate format against allowlist
     export_format = format.lower()
@@ -489,7 +489,7 @@ async def export_document(
         # Log both the original (but sanitized for logging) and sanitized filenames
         safe_original_name = sanitize_for_logging(file_name)
         safe_sanitized_name = sanitize_for_logging(sanitized_file_name)
-        logging.warning("Sanitized filename from %r to %r", safe_original_name, safe_sanitized_name)
+        logger.warning("Sanitized filename from %r to %r", safe_original_name, safe_sanitized_name)
 
     # Flag to track whether we've recorded the export completion (success or failure)
     # This ensures active_exports gauge is always decremented, even on asyncio.CancelledError
@@ -522,7 +522,7 @@ async def export_document(
             with input_file.open("w", encoding="utf-8") as f:
                 f.write(sdoc_content)
 
-            logging.info("Saved SDOC content to %s", input_file)
+            logger.info("Saved SDOC content to %s", input_file)
 
             # Use the consolidated export_to_format function
             export_file, extension, media_type = await export_to_format(input_file, output_dir, export_format)
@@ -552,7 +552,7 @@ async def export_document(
 
             sanitized_format = sanitize_for_logging(export_format)
             sanitized_persistent_temp_file = sanitize_for_logging(str(persistent_temp_file))
-            logging.info("Exported %s file to %s", sanitized_format, sanitized_persistent_temp_file)
+            logger.info("Exported %s file to %s", sanitized_format, sanitized_persistent_temp_file)
 
             # Create cleanup function
             def cleanup_temp_file() -> None:
@@ -560,7 +560,7 @@ async def export_document(
                     if persistent_temp_file.exists():
                         persistent_temp_file.unlink()
                 except Exception as e:
-                    logging.exception("Failed to clean up temporary file: %s", str(e))
+                    logger.exception("Failed to clean up temporary file: %s", str(e))
 
             # Record successful export metrics
             duration_ms = (time.perf_counter() - start_time) * 1000
@@ -585,14 +585,14 @@ async def export_document(
         metrics.record_export_failure()
         increment_export_failure(export_format)
         export_completed = True
-        logging.exception(f"Export failed: {e!s}")
+        logger.exception("Export failed")
         raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail=f"Export failed: {e!s}") from e
     finally:
         # Ensure metrics are recorded even on asyncio.CancelledError (which is a BaseException)
         if not export_completed:
             metrics.record_export_failure()
             increment_export_failure(export_format)
-            logging.warning("Export cancelled (client disconnect or timeout)")
+            logger.warning("Export cancelled (client disconnect or timeout)")
 
 
 def validate_export_paths(persistent_temp_file: Path, temp_dir_resolved: Path, export_file: Path, output_dir: Path) -> None:
@@ -619,16 +619,16 @@ def validate_export_paths(persistent_temp_file: Path, temp_dir_resolved: Path, e
     safe_output_dir_resolved = sanitize_for_logging(str(output_dir_resolved))
 
     # For debugging - use sanitized path strings
-    logging.debug("Validating paths: temp_file=%s, temp_dir=%s", safe_persistent_temp_file, safe_temp_dir_resolved)
+    logger.debug("Validating paths: temp_file=%s, temp_dir=%s", safe_persistent_temp_file, safe_temp_dir_resolved)
 
     # Check if persistent_temp_file is within temp_dir
     if not persistent_temp_file_resolved.is_relative_to(temp_dir_resolved):
-        logging.warning("Invalid file path detected: %s not in %s", safe_persistent_temp_file, safe_temp_dir_resolved)
+        logger.warning("Invalid file path detected: %s not in %s", safe_persistent_temp_file, safe_temp_dir_resolved)
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail="Invalid file path detected.")
 
     # Check if export_file is within output_dir
     if not export_file_resolved.is_relative_to(output_dir_resolved):
-        logging.warning("Invalid export path detected: %s not in %s", safe_export_file_resolved, safe_output_dir_resolved)
+        logger.warning("Invalid export path detected: %s not in %s", safe_export_file_resolved, safe_output_dir_resolved)
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail="Invalid export file path detected.")
 
 
