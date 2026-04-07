@@ -236,7 +236,7 @@ async def get_version() -> VersionInfo:
         try:
             timestamp = timestamp_file.read_text().strip()
         except Exception as e:
-            logger.warning(f"Failed to read build timestamp: {e}")
+            logger.warning("Failed to read build timestamp: %s", e)
 
     return VersionInfo(python=python_version, strictdoc=strictdoc_version, platform=platform_info, timestamp=timestamp, strictdoc_service=service_version)
 
@@ -585,7 +585,7 @@ async def export_document(
         metrics.record_export_failure()
         increment_export_failure(export_format)
         export_completed = True
-        logger.exception(f"Export failed: {e!s}")
+        logger.exception("Export failed")
         raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail=f"Export failed: {e!s}") from e
     finally:
         # Ensure metrics are recorded even on asyncio.CancelledError (which is a BaseException)
