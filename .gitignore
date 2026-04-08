@@ -179,6 +179,7 @@ pyrightconfig.json
 # Additonal not included in Python.gitignore
 /.idea/
 /.vscode/
+/.claude/
 junittest.xml
 /.history/
 test-*
