@@ -17,7 +17,7 @@ Built on **Red Hat Universal Base Image (UBI)** for enterprise-grade security, s
 
 ## Features
 
-- Simple REST API to access [StrictDoc](https://github.com/strictdoc-project/strictdoc) **0.18.1**
+- Simple REST API to access [StrictDoc](https://github.com/strictdoc-project/strictdoc) (version pinned in `pyproject.toml`)
 - **Red Hat UBI 9 base image** - Enterprise-grade security and OpenShift compatibility
 - **Fast builds** - Pre-compiled wheels, millisecond dependency installation with uv
 - **Prometheus metrics** - Built-in monitoring with dedicated metrics endpoint (port 9183)
