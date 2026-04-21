@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.15.0](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/compare/v0.14.0...v0.15.0) (2026-04-21)
+
+
+### Features
+
+* **deps:** update dependency strictdoc to v0.19.0 ([8f372ed](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/8f372ede94ce4d8cbe6dd976fba697556b8aabcb))
+
+
+### Bug Fixes
+
+* **deps:** update dependency fastapi to v0.135.2 ([4cc99e0](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/4cc99e0ded12b9db722e2040d9e996b415f91400))
+* **deps:** update dependency fastapi to v0.135.3 ([5cd4b83](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/5cd4b83d0a79323668fffa447c39c3c65ee984c5))
+* **deps:** update dependency fastapi to v0.136.0 ([007ca0c](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/007ca0c64c2289ca95fca5f63f1dba2b8de6ba80))
+* **deps:** update dependency prometheus-client to v0.24.1 ([48f041f](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/48f041fcad64f310c1ea0ca46bdf5a163a3c52c0))
+* **deps:** update dependency prometheus-client to v0.25.0 ([0b86c85](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/0b86c85bb07c41f6e42f2a5a9e874e686e2ee0ec))
+* **deps:** update dependency uvicorn to v0.42.0 ([6ea2fdc](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/6ea2fdc6f60978654ee46dc6aab9152d0f4d4a13))
+* **deps:** update dependency uvicorn to v0.43.0 ([2c9c207](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/2c9c207ba04fefa088b67ba094f1a84cf978e8c7))
+* **deps:** update dependency uvicorn to v0.44.0 ([8c4eaac](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/8c4eaac9c4af5954a546eb503385dc28cf66ba02))
+* use named logger instead of root logger ([#96](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/issues/96)) ([4d2c78e](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/4d2c78eb49f5e5e58ce3a8f32864bbeaa3073299))
+
 ## 0.14.0 (2026-03-10)
 
 
