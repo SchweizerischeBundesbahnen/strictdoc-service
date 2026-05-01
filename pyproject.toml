@@ -11,7 +11,7 @@ requires-python = ">=3.14"
 dependencies = [
     "strictdoc==0.20.0",
     "fastapi==0.136.1",
-    "uvicorn==0.44.0",
+    "uvicorn==0.46.0",
     "pathvalidate==3.3.1",
     "prometheus-client==0.25.0",
     "prometheus-fastapi-instrumentator==7.1.0",
