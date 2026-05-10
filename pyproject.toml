@@ -16,7 +16,7 @@ dependencies = [
     "prometheus-client==0.25.0",
     "prometheus-fastapi-instrumentator==7.1.0",
     # pinning version to avoid security issues
-    "urllib3==2.6.3",
+    "urllib3==2.7.0",
 ]
 
 [dependency-groups]
