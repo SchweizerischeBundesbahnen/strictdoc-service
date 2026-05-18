@@ -318,9 +318,7 @@ async def test_export_to_format_html_zip() -> None:
         (html_dir / "index.html").write_text("<html>Test</html>")
 
         with patch("app.strictdoc_controller.export_with_action"):
-            result_file, extension, mime_type = await export_to_format(
-                input_file, output_dir, "html"
-            )
+            result_file, extension, mime_type = await export_to_format(input_file, output_dir, "html")
 
             assert extension == "zip"
             assert mime_type == "application/zip"
@@ -409,16 +407,8 @@ async def test_path_validation_with_invalid_export_file() -> None:
 
             # Test with modified approach that doesn't require mocking Path.resolve
             # Instead, use an actual path that would fail validation
-            with patch("tempfile.gettempdir", return_value=str(temp_dir_path)), \
-                 patch("shutil.copy2"), \
-                 patch("app.strictdoc_controller.FileResponse"), \
-                 pytest.raises(HTTPException) as excinfo:
-
-                await export_document(
-                    sdoc_content="[DOCUMENT]\nTITLE: Test\n",
-                    format="sdoc",
-                    file_name="test_document"
-                )
+            with patch("tempfile.gettempdir", return_value=str(temp_dir_path)), patch("shutil.copy2"), patch("app.strictdoc_controller.FileResponse"), pytest.raises(HTTPException) as excinfo:
+                await export_document(sdoc_content="[DOCUMENT]\nTITLE: Test\n", format="sdoc", file_name="test_document")
 
             # Verify that an exception was raised - either BAD_REQUEST for path validation
             # or INTERNAL_SERVER_ERROR if the path traversal is caught elsewhere
@@ -471,11 +461,14 @@ async def test_sanitize_filename_is_called() -> None:
         export_file = temp_dir_path / "test.sdoc"
         export_file.write_text("test content")
 
-        with patch("app.strictdoc_controller.export_to_format") as mock_export, patch(
-            "app.strictdoc_controller.sanitize_filename"
-        ) as mock_sanitize, patch("app.strictdoc_controller.validate_export_paths"), patch(
-            "tempfile.gettempdir", return_value=str(temp_dir_path)
-        ), patch("shutil.copy2"), patch("app.strictdoc_controller.FileResponse"):
+        with (
+            patch("app.strictdoc_controller.export_to_format") as mock_export,
+            patch("app.strictdoc_controller.sanitize_filename") as mock_sanitize,
+            patch("app.strictdoc_controller.validate_export_paths"),
+            patch("tempfile.gettempdir", return_value=str(temp_dir_path)),
+            patch("shutil.copy2"),
+            patch("app.strictdoc_controller.FileResponse"),
+        ):
             # Mock export_to_format to return a valid file
             mock_export.return_value = (export_file, "sdoc", "text/plain")
             mock_sanitize.return_value = "safe_filename"
@@ -498,12 +491,13 @@ async def test_successful_validation_with_safe_paths() -> None:
         # Create the export file so stat() works
         output_file.write_text("test content")
 
-        with patch("app.strictdoc_controller.export_to_format") as mock_export, \
-             patch("tempfile.gettempdir", return_value=str(temp_dir_path)), \
-             patch("app.strictdoc_controller.validate_export_paths") as mock_validate, \
-             patch("shutil.copy2") as mock_copy, \
-             patch("app.strictdoc_controller.FileResponse") as mock_response:
-
+        with (
+            patch("app.strictdoc_controller.export_to_format") as mock_export,
+            patch("tempfile.gettempdir", return_value=str(temp_dir_path)),
+            patch("app.strictdoc_controller.validate_export_paths") as mock_validate,
+            patch("shutil.copy2") as mock_copy,
+            patch("app.strictdoc_controller.FileResponse") as mock_response,
+        ):
             # Mock export_to_format to return a valid file
             mock_export.return_value = (output_file, "sdoc", "text/plain")
 
@@ -511,11 +505,7 @@ async def test_successful_validation_with_safe_paths() -> None:
             mock_validate.return_value = None
 
             # Call the function with a safe filename
-            result = await export_document(
-                sdoc_content="[DOCUMENT]\nTITLE: Test\n",
-                format="sdoc",
-                file_name="safe_document"
-            )
+            result = await export_document(sdoc_content="[DOCUMENT]\nTITLE: Test\n", format="sdoc", file_name="safe_document")
 
             # Verify the validation was called and file was copied
             mock_validate.assert_called_once()
@@ -534,21 +524,18 @@ async def test_path_normalization() -> None:
         # Create the export file so stat() works
         output_file.write_text("test content")
 
-        with patch("app.strictdoc_controller.export_to_format") as mock_export, \
-             patch("app.strictdoc_controller.validate_export_paths") as mock_validate, \
-             patch("tempfile.gettempdir", return_value=str(temp_dir_path)), \
-             patch("shutil.copy2") as mock_copy, \
-             patch("app.strictdoc_controller.FileResponse") as mock_response:
-
+        with (
+            patch("app.strictdoc_controller.export_to_format") as mock_export,
+            patch("app.strictdoc_controller.validate_export_paths") as mock_validate,
+            patch("tempfile.gettempdir", return_value=str(temp_dir_path)),
+            patch("shutil.copy2") as mock_copy,
+            patch("app.strictdoc_controller.FileResponse") as mock_response,
+        ):
             # Mock export_to_format to return a valid file
             mock_export.return_value = (output_file, "txt", "text/plain")
 
             # Call the function - should succeed without exceptions
-            await export_document(
-                sdoc_content="[DOCUMENT]\nTITLE: Test\n",
-                format="txt",
-                file_name="output_file"
-            )
+            await export_document(sdoc_content="[DOCUMENT]\nTITLE: Test\n", format="txt", file_name="output_file")
 
             # Verify the file was copied and response was created
             mock_copy.assert_called_once()

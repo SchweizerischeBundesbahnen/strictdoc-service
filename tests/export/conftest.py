@@ -87,6 +87,7 @@ def docker_setup() -> Generator[bool]:
     try:
         # Enable BuildKit via environment variable
         import os
+
         os.environ["DOCKER_BUILDKIT"] = "1"
         client = docker.from_env()
     except DockerException as e:
@@ -124,6 +125,7 @@ def docker_setup() -> Generator[bool]:
         logger.info("Building Docker image strictdoc-service:test")
         try:
             import subprocess
+
             result = subprocess.run(
                 ["docker", "build", "-t", "strictdoc-service:test", "."],
                 env={**os.environ, "DOCKER_BUILDKIT": "1"},
