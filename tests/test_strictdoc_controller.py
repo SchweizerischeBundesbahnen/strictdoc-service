@@ -505,7 +505,7 @@ async def test_successful_validation_with_safe_paths() -> None:
             mock_validate.return_value = None
 
             # Call the function with a safe filename
-            result = await export_document(sdoc_content="[DOCUMENT]\nTITLE: Test\n", format="sdoc", file_name="safe_document")
+            await export_document(sdoc_content="[DOCUMENT]\nTITLE: Test\n", format="sdoc", file_name="safe_document")
 
             # Verify the validation was called and file was copied
             mock_validate.assert_called_once()
