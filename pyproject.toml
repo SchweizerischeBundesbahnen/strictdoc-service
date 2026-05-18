@@ -5,9 +5,9 @@ description = "Service for StrictDoc requirements management and documentation t
 authors = [
     {name = "SBB Polarion Team", email = "polarion-opensource@sbb.ch"},
 ]
-license = {text = "Apache License 2.0"}
+license = "Apache-2.0"
 readme = "README.md"
-requires-python = ">=3.14"
+requires-python = ">=3.14,<3.15"
 dependencies = [
     "strictdoc==0.20.0",
     "fastapi==0.136.1",
@@ -18,6 +18,10 @@ dependencies = [
     # pinning version to avoid security issues
     "urllib3==2.7.0",
 ]
+
+[project.urls]
+Homepage = "https://github.com/SchweizerischeBundesbahnen/strictdoc-service"
+Repository = "https://github.com/SchweizerischeBundesbahnen/strictdoc-service"
 
 [dependency-groups]
 dev = [
