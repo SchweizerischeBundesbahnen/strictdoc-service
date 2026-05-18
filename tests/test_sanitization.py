@@ -116,37 +116,46 @@ class TestSanitizationIntegration:
         assert normalized_content == "[DOCUMENT]\nTitle: Test\n\nContent here"
 
 
-@pytest.mark.parametrize("input_filename,expected", [
-    ("normal.txt", "normal.txt"),
-    ("../../../etc/passwd", "......etcpasswd"),
-    ("file with spaces.pdf", "file with spaces.pdf"),
-    ("", ""),
-    (".hidden", ".hidden"),
-    ("file<>:\"|?*.txt", "file.txt"),
-])
+@pytest.mark.parametrize(
+    "input_filename,expected",
+    [
+        ("normal.txt", "normal.txt"),
+        ("../../../etc/passwd", "......etcpasswd"),
+        ("file with spaces.pdf", "file with spaces.pdf"),
+        ("", ""),
+        (".hidden", ".hidden"),
+        ('file<>:"|?*.txt', "file.txt"),
+    ],
+)
 def test_sanitize_filename_parametrized(input_filename: str, expected: str) -> None:
     """Parametrized tests for sanitize_filename function."""
     assert sanitize_filename(input_filename) == expected
 
 
-@pytest.mark.parametrize("input_text,expected", [
-    ("normal text", "normal text"),
-    ("line1\nline2", "line1line2"),
-    ("line1\r\nline2", "line1line2"),
-    ("line1\rline2", "line1line2"),
-    ("mixed\nline\r\nendings\r", "mixedlineendings"),
-])
+@pytest.mark.parametrize(
+    "input_text,expected",
+    [
+        ("normal text", "normal text"),
+        ("line1\nline2", "line1line2"),
+        ("line1\r\nline2", "line1line2"),
+        ("line1\rline2", "line1line2"),
+        ("mixed\nline\r\nendings\r", "mixedlineendings"),
+    ],
+)
 def test_sanitize_for_logging_parametrized(input_text: str, expected: str) -> None:
     """Parametrized tests for sanitize_for_logging function."""
     assert sanitize_for_logging(input_text) == expected
 
 
-@pytest.mark.parametrize("input_content,expected", [
-    ("unix\nlines", "unix\nlines"),
-    ("windows\r\nlines", "windows\nlines"),
-    ("mac\rlines", "mac\nlines"),
-    ("mixed\nwin\r\nmac\rends", "mixed\nwin\nmac\nends"),
-])
+@pytest.mark.parametrize(
+    "input_content,expected",
+    [
+        ("unix\nlines", "unix\nlines"),
+        ("windows\r\nlines", "windows\nlines"),
+        ("mac\rlines", "mac\nlines"),
+        ("mixed\nwin\r\nmac\rends", "mixed\nwin\nmac\nends"),
+    ],
+)
 def test_normalize_line_endings_parametrized(input_content: str, expected: str) -> None:
     """Parametrized tests for normalize_line_endings function."""
     assert normalize_line_endings(input_content) == expected

@@ -118,6 +118,7 @@ class TestMetricsServerConfiguration:
         with patch.dict("os.environ", {"METRICS_PORT": "70000"}):
             # Re-import to pick up new env var
             import importlib
+
             importlib.reload(app.metrics_server)
 
             # Port should be validated to default

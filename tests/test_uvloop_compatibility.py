@@ -58,11 +58,7 @@ def test_uvloop_event_loop_functionality() -> None:
         print(f"✅ uvloop event loop functional on Python {python_version.major}.{python_version.minor}.{python_version.micro}")
 
     except Exception as e:
-        pytest.fail(
-            f"❌ uvloop event loop FAILED on Python {python_version.major}.{python_version.minor}\n\n"
-            f"Error: {e}\n\n"
-            f"uvloop imported successfully but failed to function as an event loop."
-        )
+        pytest.fail(f"❌ uvloop event loop FAILED on Python {python_version.major}.{python_version.minor}\n\nError: {e}\n\nuvloop imported successfully but failed to function as an event loop.")
 
 
 def test_uvicorn_has_uvloop_extras() -> None:
@@ -73,13 +69,9 @@ def test_uvicorn_has_uvloop_extras() -> None:
     """
     try:
         import uvloop  # noqa: F401
+
         has_uvloop = True
     except ImportError:
         has_uvloop = False
 
-    assert has_uvloop, (
-        "uvloop is not available. This means either:\n"
-        "1. uvicorn was installed without [standard] extras, OR\n"
-        "2. uvloop failed to install/compile\n\n"
-        "Expected dependency: uvicorn[standard] which includes uvloop"
-    )
+    assert has_uvloop, "uvloop is not available. This means either:\n1. uvicorn was installed without [standard] extras, OR\n2. uvloop failed to install/compile\n\nExpected dependency: uvicorn[standard] which includes uvloop"

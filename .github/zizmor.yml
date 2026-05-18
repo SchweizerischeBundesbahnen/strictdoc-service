@@ -1,0 +1,7 @@
+rules:
+  # Reusable workflows from our own org — tracking @main intentionally.
+  unpinned-uses:
+    config:
+      policies:
+        '*': hash-pin
+        SchweizerischeBundesbahnen/*: any
