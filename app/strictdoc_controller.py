@@ -9,15 +9,17 @@ import shutil
 import sys
 import tempfile
 import time
+from collections.abc import Awaitable, Callable
 from contextlib import asynccontextmanager
 from http import HTTPStatus
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, overload
 
 import uvicorn
-from fastapi import Body, FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse
+from git import GitCommandError, Repo
 from pathvalidate import sanitize_filename
 from prometheus_fastapi_instrumentator import Instrumentator
 from pydantic import BaseModel
@@ -31,7 +33,7 @@ from strictdoc.core.project_config import ProjectConfig  # type: ignore[import]
 
 from app.constants import EXPORT_FORMATS
 from app.metrics_server import METRICS_SERVER_ENABLED, MetricsServer
-from app.prometheus_metrics import increment_export_failure, increment_export_success, observe_export_duration, observe_request_body_size, observe_response_body_size
+from app.prometheus_metrics import increment_export_failure, observe_export_duration
 from app.sanitization import normalize_line_endings, sanitize_for_logging
 from app.strictdoc_metrics import get_strictdoc_metrics
 
@@ -88,6 +90,33 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
             await _metrics_server.stop()
         logger.info("Application shutdown complete")
 
+
+# Repo folder configs
+INDEX_FOLDER_TEMPLATE = """
+<div class="project_tree-folder-content">
+    <a class="project_tree-file" data-turbo="false" href="{{PROJECT}}/html/index.html"
+        data-testid="tree-file-link" target="_blank">
+        <div class="project_tree-file-icon">
+            <svg class="svg_icon" width="16" height="16" viewBox="0 0 16 16" version="1.1"
+                xmlns="http://www.w3.org/2000/svg">
+                <path
+                    d=" M13,13 L13,8 C13,7.5 12.6,7 12,7 L9,7 C8.5,7 8,6.5 8,6 L8,3 C8,2.5 7.5,2 7,2 L4,2 C3.5,2 3,\
+2.5 3,3 L3,13 C3,13.5 3.5,14 4,14 L12,14 C12.6,14 13,13.5 13,13 Z M13,9 L13,8 C13,7.5 13,7 12.5,6.5 L8.5,2.5 C8,2 7.5,2 7,2 L6,2">
+                </path>
+            </svg>
+        </div>
+        <div class="project_tree-file-details">
+            <div class="project_tree-file-title">
+                {{PROJECT}}
+            </div>
+            <div class="project_tree-file-name">
+                index.html
+            </div>
+        </div>
+    </a>
+</div>
+"""
+INDEX_NEW_FOLDER_LINE = "<!-- Add more project entries here -->"
 
 app = FastAPI(
     title="StrictDoc Service API",
@@ -198,6 +227,25 @@ class ErrorResponse(BaseModel):
     details: str | None = None
 
 
+class GitHubExportParams(BaseModel):
+    """GitHub export params model"""
+
+    content: dict[str, str]
+    folder_name: str
+    owner: str
+    repo: str
+    access_token: str | None
+    commit_message: str | None
+
+
+class StrictdocExportParams(BaseModel):
+    """Strictdoc export model"""
+
+    content: dict[str, str]
+    format: str
+    file_name: str
+
+
 # Middleware for logging
 @app.middleware("http")
 async def log_requests(request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
@@ -243,6 +291,7 @@ async def get_version() -> VersionInfo:
 
 def process_sdoc_content(content: str, input_file: Path) -> None:
     """Process and validate SDOC content.
+    What is this function used for?
 
     Args:
         content: The SDOC content to validate
@@ -354,69 +403,118 @@ async def run_strictdoc_command(cmd: list[str]) -> None:
         raise RuntimeError(f"Command execution failed: {e!s}") from e
 
 
-async def export_with_action(input_file: Path, output_dir: Path, format_name: str) -> None:
-    """Export a document using ExportAction.
+async def export_bulk_with_action(input_dir: Path, output_dir: Path, export_format: str) -> None:
+    """Export multiple documents using ExportAction.
 
     Args:
-        input_file: Path to input .sdoc file
+        input_dir: Path to input directory containing .sdoc files
         output_dir: Path to output directory
-        format_name: Export format name
+        export_format: Export format name
 
     """
-    # Create output directory if it doesn't exist
     output_dir.mkdir(parents=True, exist_ok=True)
 
     try:
-        cmd = ["strictdoc", "export", "--formats", format_name, "--output-dir", str(output_dir), str(input_file)]
+        cmd = ["strictdoc", "export", "--formats", export_format, "--output-dir", str(output_dir), str(input_dir)]
         await run_strictdoc_command(cmd)
     except Exception as e:
         logger.exception("Export failed: %s", str(e))
         raise RuntimeError(f"Export failed: {e!s}") from e
 
 
-async def export_to_format(input_file: Path, output_dir: Path, export_format: str) -> tuple[Path, str, str]:
-    """Export SDOC to specified format.
+async def export_bulk_to_format(input_dir: Path, output_dir: Path, export_format: str) -> None:
+    """Export multiple SDOC documents to specified format.
 
     Args:
-        input_file: Path to input file
+        input_dir: Path to input directory
         output_dir: Path to output directory
         export_format: Format to export to
-
-    Returns:
-        Tuple of (file_path, extension, mime_type)
 
     Raises:
         HTTPException: If exported file not found or other error
 
     """
-    # Check if export_format is in the list of supported formats
     if export_format not in EXPORT_FORMATS:
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=f"Invalid export format: {export_format}")
-
-    # Get format-specific configuration from EXPORT_FORMATS
-    extension = EXPORT_FORMATS[export_format]["extension"]
-    mime_type = EXPORT_FORMATS[export_format]["mime_type"]
-
-    # Export the document
     try:
-        # Call export_with_action for the actual export
-        await export_with_action(input_file, output_dir, export_format)
+        await export_bulk_with_action(input_dir, output_dir, export_format)
     except Exception as e:
         logger.exception("Export failed: %s", str(e))
         raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail=f"Export to {export_format} failed: {e!s}") from e
 
-    # For HTML, we need to zip the output directory
-    if export_format == "html":
-        # Use a secure path for the zip output - place it in the output_dir instead of input file's parent
-        zip_base_name = output_dir / "output"
-        output_zip = Path(f"{zip_base_name}.zip")
-        shutil.make_archive(str(zip_base_name), "zip", output_dir)
-        return output_zip, extension, mime_type
 
-    # Find the exported file - handle special cases
-    exported_file = find_exported_file(output_dir, export_format, extension)
+async def remove_target_folder(target_folder: Path) -> None:
+    if not target_folder.exists():
+        return
+    try:
+        if target_folder.is_file():
+            target_folder.unlink()
+        else:
+            shutil.rmtree(target_folder)
+            target_folder.mkdir()
+    except Exception as e:
+        logger.exception("Failed to remove existing folder in repo: %s", str(e))
+        raise RuntimeError(f"Failed to remove existing folder in repo: {e!s}") from e
 
-    return exported_file, extension, mime_type
+
+async def commit_to_github(output_dir: Path, github_params: GitHubExportParams, folder_name: str) -> None:
+    """Commit exported files to GitHub repository."""
+    with tempfile.TemporaryDirectory() as base_dir:
+        # Clone the repository
+        try:
+            repo_url = f"https://{github_params.access_token}@github.com/{github_params.owner}/{github_params.repo}.git" if github_params.access_token else f"https://github.com/{github_params.owner}/{github_params.repo}.git"
+            repo = Repo.clone_from(repo_url, base_dir, depth=1)
+        except GitCommandError as e:
+            logger.exception("Failed to clone repository: %s", str(e))
+            raise RuntimeError(f"Failed to clone repository: {e!s}") from e
+
+        if repo.working_tree_dir is None:
+            raise HTTPException(status_code=500, detail="Repo working dir could not be established")
+
+        # If folder_name already exists in repo, remove it before copying new files
+        target_folder = Path(repo.working_tree_dir) / folder_name
+        await remove_target_folder(target_folder)
+
+        # Copy files from output_dir to repo working tree
+        for item in output_dir.iterdir():
+            if item.name == "_cache":
+                continue
+            if item.is_file():
+                shutil.copy2(item, Path(repo.working_tree_dir) / folder_name / item.name)
+            elif item.is_dir():
+                shutil.copytree(item, Path(repo.working_tree_dir) / folder_name / item.name, dirs_exist_ok=True, ignore=shutil.ignore_patterns("_cache"))
+
+        update_repo_index_file(Path(repo.working_tree_dir), folder_name)
+
+        # Add changes and commit
+        try:
+            repo.git.add(A=True)
+            commit_message = github_params.commit_message or "Add exported StrictDoc files"
+            repo.index.commit(commit_message)
+            origin = repo.remote(name="origin")
+            origin = origin.set_url(repo_url)
+            logger.info("Current repo URL: %s", origin.url)
+            origin.push()
+        except GitCommandError as e:
+            logger.exception("Failed to commit or push changes: %s", str(e))
+            raise RuntimeError(f"Failed to commit or push changes: {e!s}") from e
+
+
+def update_repo_index_file(repo_dir: Path, folder_name: str) -> None:
+    """Update the root index file in the repository to include a link to the new project folder
+
+    Index file must already be set up before using this service to commit to github
+    """
+    index_file = repo_dir / "index.html"
+    try:
+        content = index_file.read_text(encoding="utf-8")
+        new_entry = INDEX_FOLDER_TEMPLATE.replace("{{PROJECT}}", folder_name)
+        if new_entry not in content:
+            content = content.replace(INDEX_NEW_FOLDER_LINE, new_entry + f"\n{INDEX_NEW_FOLDER_LINE}")
+            index_file.write_text(content, encoding="utf-8")
+    except Exception as e:
+        logger.exception("Failed to update index file: %s", str(e))
+        raise RuntimeError(f"Failed to update index file: {e!s}") from e
 
 
 def find_exported_file(output_dir: Path, export_format: str, extension: str) -> Path:
@@ -453,63 +551,126 @@ def find_exported_file(output_dir: Path, export_format: str, extension: str) -> 
     return exported_files[0]
 
 
-@app.post("/export", response_class=FileResponse)
-async def export_document(
-    sdoc_content: str = Body(..., media_type="text/plain", description="SDOC content to export"),
-    format: str = Query("html", description="Export format"),
-    file_name: str = Query("exported-document", description="Name for the exported file"),
+def _build_single_file_response(
+    output_dir: Path,
+    export_format: str,
+    sanitized_file_name: str,
 ) -> FileResponse:
-    """Export StrictDoc document to various formats.
+    """Build a FileResponse for a single exported document.
+
+    Locates the exported file in output_dir, copies it to a persistent temp path,
+    and returns a FileResponse with the correct MIME type for the format.
 
     Args:
-        sdoc_content: The SDOC content to export
-        format: The export format
-        file_name: The name for the exported file
+        output_dir: Directory containing the export output.
+        export_format: The export format key (e.g. "json", "html").
+        sanitized_file_name: Sanitized base name for the response file.
 
     Returns:
-        FileResponse: The exported file
-
+        FileResponse: Response with the exported file.
     """
-    # Track metrics
+    extension = EXPORT_FORMATS[export_format]["extension"]
+    mime_type = EXPORT_FORMATS[export_format]["mime_type"]
+
+    if export_format == "html":
+        zip_base_name = output_dir.parent / "output"
+        export_file = Path(f"{zip_base_name}.zip")
+        shutil.make_archive(str(zip_base_name), "zip", output_dir)
+    else:
+        export_file = find_exported_file(output_dir, export_format, extension)
+
+    secure_filename = f"{sanitized_file_name}.{extension}"
+    temp_dir_obj = Path(tempfile.gettempdir())
+    persistent_temp_file = temp_dir_obj / secure_filename
+    persistent_temp_file.parent.mkdir(parents=True, exist_ok=True)
+    validate_export_paths(persistent_temp_file, temp_dir_obj.resolve(), export_file, output_dir if export_format != "html" else output_dir.parent)
+    shutil.copy2(export_file, persistent_temp_file)
+    logger.info("Exported single %s file to %s", sanitize_for_logging(export_format), sanitize_for_logging(str(persistent_temp_file)))
+
+    def cleanup() -> None:
+        try:
+            if persistent_temp_file.exists():
+                persistent_temp_file.unlink()
+        except Exception as e:
+            logger.exception("Failed to clean up temporary file: %s", str(e))
+
+    return FileResponse(path=str(persistent_temp_file), media_type=mime_type, filename=secure_filename, background=BackgroundTask(cleanup))
+
+
+def _build_bulk_zip_response(
+    temp_dir_path: Path,
+    output_dir: Path,
+    export_format: str,
+    sanitized_file_name: str,
+) -> FileResponse:
+    """Build a FileResponse for a bulk export as a ZIP archive.
+
+    Zips the entire output_dir, copies the archive to a persistent temp path,
+    and returns a FileResponse with application/zip MIME type.
+
+    Args:
+        temp_dir_path: Root of the working TemporaryDirectory.
+        output_dir: Directory containing the export output.
+        export_format: The export format key (used for logging only).
+        sanitized_file_name: Sanitized base name for the response file.
+
+    Returns:
+        FileResponse: Response with the ZIP archive.
+    """
+    zip_base_name = temp_dir_path / "bulk-export"
+    export_file = Path(f"{zip_base_name}.zip")
+    shutil.make_archive(str(zip_base_name), "zip", output_dir)
+
+    secure_filename = f"{sanitized_file_name}.zip"
+    temp_dir_obj = Path(tempfile.gettempdir())
+    persistent_temp_file = temp_dir_obj / secure_filename
+    persistent_temp_file.parent.mkdir(parents=True, exist_ok=True)
+    validate_export_paths(persistent_temp_file, temp_dir_obj.resolve(), export_file, temp_dir_path)
+    shutil.copy2(export_file, persistent_temp_file)
+    logger.info("Exported bulk %s zip to %s", sanitize_for_logging(export_format), sanitize_for_logging(str(persistent_temp_file)))
+
+    def cleanup() -> None:
+        try:
+            if persistent_temp_file.exists():
+                persistent_temp_file.unlink()
+        except Exception as e:
+            logger.exception("Failed to clean up temporary file: %s", str(e))
+
+    return FileResponse(path=str(persistent_temp_file), media_type="application/zip", filename=secure_filename, background=BackgroundTask(cleanup))
+
+
+@overload
+async def _export_documents(export_params: StrictdocExportParams, sanitized_file_name: str) -> FileResponse: ...
+
+
+@overload
+async def _export_documents(export_params: GitHubExportParams, sanitized_file_name: str, callback: Callable[[Path, GitHubExportParams, str], Awaitable[None]]) -> FileResponse: ...
+
+
+async def _export_documents(export_params: StrictdocExportParams | GitHubExportParams, sanitized_file_name: str, callback: Callable[[Path, GitHubExportParams, str], Awaitable[None]] | None = None) -> FileResponse:
     metrics = get_strictdoc_metrics()
     start_time = time.perf_counter()
-
-    # Sanitize user input for logging
-    sanitized_format = sanitize_for_logging(format)
-    sanitized_file_name = sanitize_for_logging(file_name)
-    logger.info("Export requested for format: %r, filename: %r", sanitized_format, sanitized_file_name)
-
-    # Validate format against allowlist
-    export_format = format.lower()
-    # Note: format validation is handled in export_to_format function
-
-    # Sanitize filename using pathvalidate to prevent path traversal
-    sanitized_file_name = sanitize_filename(file_name, replacement_text="_")
-    if sanitized_file_name != file_name:
-        # Log both the original (but sanitized for logging) and sanitized filenames
-        safe_original_name = sanitize_for_logging(file_name)
-        safe_sanitized_name = sanitize_for_logging(sanitized_file_name)
-        logger.warning("Sanitized filename from %r to %r", safe_original_name, safe_sanitized_name)
-
-    # Flag to track whether we've recorded the export completion (success or failure)
-    # This ensures active_exports gauge is always decremented, even on asyncio.CancelledError
+    metrics.record_export_start()
     export_completed = False
-
-    try:
-        # Record export start inside try block to ensure finally always decrements
-        metrics.record_export_start()
-
-        # Basic validation of SDOC content
-        if not sdoc_content or "[DOCUMENT]" not in sdoc_content:
+    export_format = (export_params.format if isinstance(export_params, StrictdocExportParams) else "html").lower()
+    # Validate all SDOC content entries
+    for doc_name, doc_content in export_params.content.items():
+        if not doc_content or "[DOCUMENT]\n" not in doc_content:
             metrics.record_export_failure()
             increment_export_failure(export_format)
-            export_completed = True
-            raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail="Invalid SDOC content: Missing [DOCUMENT] section")
+            raise HTTPException(
+                status_code=HTTPStatus.BAD_REQUEST,
+                detail=f"Invalid SDOC content in '{sanitize_for_logging(doc_name)}': Missing [DOCUMENT] section",
+            )
+        if not doc_name.endswith(".sdoc"):
+            metrics.record_export_failure()
+            increment_export_failure(export_format)
+            raise HTTPException(
+                status_code=HTTPStatus.BAD_REQUEST,
+                detail=f"Invalid SDOC file name: {sanitize_for_logging(doc_name)}. All file names must end with .sdoc",
+            )
 
-        # Track request body size
-        observe_request_body_size(len(sdoc_content.encode("utf-8")))
-
-        # Create temporary directories for processing
+    try:
         with tempfile.TemporaryDirectory() as temp_dir:
             temp_dir_path = Path(temp_dir)
             input_dir = temp_dir_path / "input"
@@ -517,75 +678,30 @@ async def export_document(
             input_dir.mkdir()
             output_dir.mkdir()
 
-            # Save SDOC content to file
-            input_file = input_dir / "input.sdoc"
-            with input_file.open("w", encoding="utf-8") as f:
-                f.write(sdoc_content)
+            # Write all documents to input directory
+            for doc_name, doc_content in export_params.content.items():
+                input_file = input_dir / sanitize_filename(doc_name, replacement_text="_")
+                with input_file.open("w", encoding="utf-8") as f:
+                    f.write(doc_content)
+                logger.info("Saved SDOC content to %s", input_file)
 
-            logger.info("Saved SDOC content to %s", input_file)
+            # Single export call for all documents
 
-            # Use the consolidated export_to_format function
-            export_file, extension, media_type = await export_to_format(input_file, output_dir, export_format)
+            await export_bulk_to_format(input_dir, output_dir, export_format)
+            if (cache_path := (output_dir / "_cache")).exists():
+                shutil.rmtree(cache_path)
 
-            # Create a secure path for the temporary file in a controlled directory
-            temp_dir_obj = Path(tempfile.gettempdir())
-            secure_filename = f"{sanitized_file_name}.{extension}"
+            if callback is not None and isinstance(export_params, GitHubExportParams):
+                await callback(output_dir, export_params, sanitized_file_name)
 
-            # Build the path without further sanitization
-            persistent_temp_file = temp_dir_obj / secure_filename
-
-            # Ensure the parent directory exists
-            persistent_temp_file.parent.mkdir(parents=True, exist_ok=True)
-
-            # Resolve the temporary directory path once
-            temp_dir_resolved = temp_dir_obj.resolve()
-
-            # Validate all paths to prevent path traversal
-            validate_export_paths(persistent_temp_file, temp_dir_resolved, export_file, output_dir)
-
-            # Track response body size before copying (export_file exists at this point)
-            response_size = export_file.stat().st_size
-            observe_response_body_size(response_size)
-
-            # Copy the file
-            shutil.copy2(export_file, persistent_temp_file)
-
-            sanitized_format = sanitize_for_logging(export_format)
-            sanitized_persistent_temp_file = sanitize_for_logging(str(persistent_temp_file))
-            logger.info("Exported %s file to %s", sanitized_format, sanitized_persistent_temp_file)
-
-            # Create cleanup function
-            def cleanup_temp_file() -> None:
-                try:
-                    if persistent_temp_file.exists():
-                        persistent_temp_file.unlink()
-                except Exception as e:
-                    logger.exception("Failed to clean up temporary file: %s", str(e))
-
-            # Record successful export metrics
-            duration_ms = (time.perf_counter() - start_time) * 1000
-            metrics.record_export_success(duration_ms)
-            increment_export_success(export_format)
-            observe_export_duration(export_format, duration_ms / 1000)
+            response = _build_single_file_response(output_dir, export_format, sanitized_file_name) if len(export_params.content) == 1 else _build_bulk_zip_response(temp_dir_path, output_dir, export_format, sanitized_file_name)
             export_completed = True
-
-            # Return the exported file
-            return FileResponse(path=str(persistent_temp_file), media_type=media_type, filename=secure_filename, background=BackgroundTask(cleanup_temp_file))
+            return response
 
     except HTTPException:
-        # Record failure metrics (if not already recorded)
-        if not export_completed:
-            metrics.record_export_failure()
-            increment_export_failure(export_format)
-            export_completed = True
-        # Re-raise HTTP exceptions
         raise
     except Exception as e:
-        # Record failure metrics
-        metrics.record_export_failure()
-        increment_export_failure(export_format)
-        export_completed = True
-        logger.exception("Export failed")
+        logger.exception("Export failed: %s", str(e))
         raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail=f"Export failed: {e!s}") from e
     finally:
         # Ensure metrics are recorded even on asyncio.CancelledError (which is a BaseException)
@@ -593,6 +709,69 @@ async def export_document(
             metrics.record_export_failure()
             increment_export_failure(export_format)
             logger.warning("Export cancelled (client disconnect or timeout)")
+        else:
+            duration_ms = (time.perf_counter() - start_time) * 1000
+            metrics.record_export_success(duration_ms)
+            observe_export_duration(export_format, duration_ms / 1000)
+
+
+@app.post("/export", response_class=FileResponse)
+async def export_documents(export_params: StrictdocExportParams) -> FileResponse:
+    """Export one or more StrictDoc documents to the requested format.
+
+    When a single document is provided, returns the file in the requested format.
+    When multiple documents are provided, returns a ZIP archive containing all exported files.
+
+    Args:
+        export_params: Export parameters including content dict, format, and output filename.
+
+    Returns:
+        FileResponse: The exported file or ZIP archive.
+    """
+    export_format = export_params.format.lower()
+    file_name = export_params.file_name
+
+    logger.info(
+        "Export requested: format=%r, filename=%r, documents=%d",
+        sanitize_for_logging(export_format),
+        sanitize_for_logging(file_name),
+        len(export_params.content),
+    )
+
+    sanitized_file_name = sanitize_filename(file_name, replacement_text="_")
+    if sanitized_file_name != file_name:
+        logger.warning("Sanitized filename from %r to %r", sanitize_for_logging(file_name), sanitize_for_logging(sanitized_file_name))
+
+    return await _export_documents(export_params, sanitized_file_name)
+
+
+@app.post("/export-github", response_class=FileResponse)
+async def export_documents_github(export_params: GitHubExportParams) -> FileResponse:
+    """Export one or more StrictDoc documents to the request GitHub repo.
+    When a single document is provided, returns the file in the requested format.
+    When multiple documents are provided, returns a ZIP archive containing all exported files.
+
+    Args:
+        export_params: Export parameters including content dict and github params.
+
+    Returns:
+        FileResponse: The exported ZIP archive.
+    """
+    if os.getenv("ENABLE_GITHUB_EXPORT", "false").lower() == "false":
+        raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="Endpoint not enabled")
+    folder_name = export_params.folder_name
+
+    logger.info(
+        "GitHub Export requested: folder=%r, documents=%d",
+        sanitize_for_logging(folder_name),
+        len(export_params.content),
+    )
+
+    sanitized_folder_name = sanitize_filename(folder_name, replacement_text="_")
+    if sanitized_folder_name != folder_name:
+        logger.warning("Sanitized filename from %r to %r", sanitize_for_logging(folder_name), sanitize_for_logging(sanitized_folder_name))
+
+    return await _export_documents(export_params, sanitized_folder_name, commit_to_github)
 
 
 def validate_export_paths(persistent_temp_file: Path, temp_dir_resolved: Path, export_file: Path, output_dir: Path) -> None:
@@ -632,10 +811,10 @@ def validate_export_paths(persistent_temp_file: Path, temp_dir_resolved: Path, e
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail="Invalid export file path detected.")
 
 
-def start_server(port: int) -> None:
+def start_server(host: str, port: int) -> None:
     """Start the FastAPI server.
 
     Args:
         port: The port number to run the server on
     """
-    uvicorn.run(app, host="127.0.0.1", port=port, log_level="info")
+    uvicorn.run(app, host=host, port=port, log_level="info")
