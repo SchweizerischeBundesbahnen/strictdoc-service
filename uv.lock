@@ -1405,7 +1405,7 @@ test = [
 [package.metadata]
 requires-dist = [
     { name = "fastapi", specifier = "==0.136.1" },
-    { name = "gitpython", specifier = ">=3.1.46" },
+    { name = "gitpython", specifier = "==3.1.46" },
     { name = "pathvalidate", specifier = "==3.3.1" },
     { name = "plotly", specifier = "==6.6.0" },
     { name = "prometheus-client", specifier = "==0.25.0" },
