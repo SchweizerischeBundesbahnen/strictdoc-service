@@ -4,7 +4,6 @@ import asyncio
 import logging
 import os
 import platform
-import re
 import shutil
 import sys
 import tempfile
@@ -27,14 +26,11 @@ from starlette.background import BackgroundTask
 
 # Import StrictDoc version directly
 from strictdoc import __version__ as strictdoc_version  # type: ignore[import]
-from strictdoc.backend.sdoc.pickle_cache import PickleCache  # type: ignore[import]
-from strictdoc.backend.sdoc.reader import SDReader  # type: ignore[import]
-from strictdoc.core.project_config import ProjectConfig  # type: ignore[import]
 
 from app.constants import EXPORT_FORMATS
 from app.metrics_server import METRICS_SERVER_ENABLED, MetricsServer
 from app.prometheus_metrics import increment_export_failure, increment_export_success, observe_export_duration
-from app.sanitization import normalize_line_endings, sanitize_for_logging
+from app.sanitization import sanitize_for_logging
 from app.strictdoc_metrics import get_strictdoc_metrics
 
 if TYPE_CHECKING:
@@ -174,35 +170,6 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     return JSONResponse(status_code=HTTPStatus.UNPROCESSABLE_ENTITY, content={"detail": error_details if error_details else exc.errors()})
 
 
-# Monkey patch PickleCache.get_cached_file_path to handle Path objects
-original_get_cached_file_path = PickleCache.get_cached_file_path
-
-
-def patched_get_cached_file_path(file_path: str | Path, project_config: ProjectConfig, content_kind: str) -> str:
-    """Get the cached file path, handling Path objects.
-
-    This is a monkey-patched version of PickleCache.get_cached_file_path that
-    handles Path objects correctly.
-
-    Args:
-        file_path: The path to the file, as string or Path
-        project_config: The project configuration
-        content_kind: The kind of content being cached
-
-    Returns:
-        str: The path to the cached file
-
-    """
-    # Convert file_path to str if it's a Path
-    if hasattr(file_path, "absolute"):  # It's likely a Path object
-        file_path = str(file_path.absolute())
-    return original_get_cached_file_path(file_path, project_config, content_kind)
-
-
-# Apply the monkey patch
-PickleCache.get_cached_file_path = patched_get_cached_file_path
-
-
 # Request and response models
 class VersionInfo(BaseModel):
     """Version information response model.
@@ -232,8 +199,8 @@ class GitHubExportParams(BaseModel):
 
     content: dict[str, str] = Field(description="StrictDoc Content of the form {key.sdoc: content}")
     folder_name: str = Field(description="Newly created folder to export the html content into")
-    owner: str = Field(description="Repository owner", pattern=r"[A-Za-z0-9\._-]+")
-    repo: str = Field(description="Repository name", pattern=r"[A-Za-z0-9\._-]+")
+    owner: str = Field(description="Repository owner", pattern=r"^[A-Za-z0-9\._-]+$")
+    repo: str = Field(description="Repository name", pattern=r"^[A-Za-z0-9\._-]+$")
     access_token: str | None = Field(description="Access token for the repository", default=None)
     commit_message: str | None = Field(description="Commit message", default=None)
 
@@ -287,85 +254,6 @@ async def get_version() -> VersionInfo:
             logger.warning("Failed to read build timestamp: %s", e)
 
     return VersionInfo(python=python_version, strictdoc=strictdoc_version, platform=platform_info, timestamp=timestamp, strictdoc_service=service_version)
-
-
-def process_sdoc_content(content: str, input_file: Path) -> None:
-    """Process and validate SDOC content.
-    What is this function used for?
-
-    Args:
-        content: The SDOC content to validate
-        input_file: Path to the input file
-
-    Raises:
-        HTTPException: If the content is invalid
-
-    """
-    # Normalize line endings to Unix style
-    content = normalize_line_endings(content)
-
-    # Very basic validation of SDOC content
-    if "[DOCUMENT]" not in content:
-        raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail="Missing [DOCUMENT] section in SDOC content")
-
-    # Write content to file - input_file is created within the controlled temp directory
-    with input_file.open("w", encoding="utf-8") as f:
-        f.write(content)
-
-    # Parse the document using StrictDoc's reader to validate
-    try:
-        reader = SDReader()
-        # Create config with explicit paths
-        # Note: StrictDoc 0.14.0+ removed the 'environment' parameter from ProjectConfig
-        input_parent = str(input_file.parent)
-        project_config = ProjectConfig(
-            project_title=DEFAULT_PROJECT_TITLE,
-            dir_for_sdoc_assets=input_parent,
-            dir_for_sdoc_cache=str(Path(input_parent) / "cache"),
-            project_features=DEFAULT_PROJECT_FEATURES,
-            server_host=DEFAULT_SERVER_HOST,
-            server_port=DEFAULT_SERVER_PORT,
-            include_doc_paths=[],
-            exclude_doc_paths=[],
-            source_root_path=None,
-            include_source_paths=[],
-            exclude_source_paths=[],
-            test_report_root_dict={},
-            source_nodes=[],
-            html2pdf_strict=False,
-            html2pdf_template=None,
-            bundle_document_version=None,
-            bundle_document_date=None,
-            traceability_matrix_relation_columns=None,
-            reqif_profile="",
-            reqif_multiline_is_xhtml=False,
-            reqif_enable_mid=False,
-            reqif_import_markup=None,
-            chromedriver=None,
-            section_behavior=DEFAULT_SECTION_BEHAVIOR,
-            statistics_generator=None,
-        )
-
-        # Monkey patch the config to avoid TypeError in pickle_cache.py
-        # PickleCache uses project_config.output_dir + full_path_to_file
-        project_config.output_dir = input_parent + "/"
-
-        reader.read_from_file(str(input_file), project_config)
-    except Exception as e:
-        # Clean up and raise a more user-friendly error
-        error_msg = str(e)
-        # Extract the most relevant part of the error message
-        if "TextXSyntaxError" in error_msg:
-            # Extract the error location and message
-            match = re.match(r"^([^:]{1,256}):(\d{1,6}):(\d{1,6}):(.*)$", error_msg, re.DOTALL)
-            if match:
-                _, line, col, message = match.groups()
-                error_msg = f"Syntax error in SDOC document at line {line}, column {col}: {message.strip()}"
-            else:
-                error_msg = "Syntax error in SDOC document. Please check your document structure."
-
-        logger.exception("SDOC parsing error: %s", error_msg)
-        raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=error_msg) from e
 
 
 async def run_strictdoc_command(cmd: list[str]) -> None:
@@ -463,10 +351,11 @@ async def commit_to_github(output_dir: Path, github_params: GitHubExportParams, 
     with tempfile.TemporaryDirectory() as base_dir:
         # Clone the repository
         try:
-            repo_url = f"https://{github_params.access_token}@github.com/{github_params.owner}/{github_params.repo}.git" if github_params.access_token else f"https://github.com/{github_params.owner}/{github_params.repo}.git"
+            clean_repo_url = "https://github.com/{github_params.owner}/{github_params.repo}.git"
+            repo_url = f"https://{github_params.access_token}@github.com/{github_params.owner}/{github_params.repo}.git" if github_params.access_token else clean_repo_url
             repo = Repo.clone_from(repo_url, base_dir, depth=1)
         except GitCommandError as e:
-            logger.exception("Failed to clone repository: %s", str(e))
+            logger.exception("Failed to clone repository: %s", str(e).replace(repo_url, clean_repo_url))
             raise RuntimeError(f"Failed to clone repository: {e!s}") from e
 
         if repo.working_tree_dir is None:
@@ -495,8 +384,9 @@ async def commit_to_github(output_dir: Path, github_params: GitHubExportParams, 
             origin = repo.remote(name="origin")
             origin = origin.set_url(repo_url)
             origin.push()
+            logger.info("Committed and pushed changes to origin: %s", clean_repo_url)
         except GitCommandError as e:
-            logger.exception("Failed to commit or push changes: %s", str(e).replace(repo_url, "github"))
+            logger.exception("Failed to commit or push changes: %s", str(e).replace(repo_url, clean_repo_url))
             raise RuntimeError(f"Failed to commit or push changes: {e!s}") from e
 
 
