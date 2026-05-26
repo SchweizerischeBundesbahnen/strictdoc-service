@@ -1,6 +1,7 @@
 """StrictDoc service controller module."""
 
 import asyncio
+import html
 import logging
 import os
 import platform
@@ -338,7 +339,7 @@ async def remove_target_folder(target_folder: Path) -> None:
         raise RuntimeError(f"Failed to remove existing folder in repo: {e!s}") from e
 
 
-async def commit_to_github(output_dir: Path, github_params: GitHubExportParams, folder_name: str) -> None:
+async def commit_to_github(output_dir: Path, github_params: GitHubExportParams, sanitized_folder_name: str) -> None:
     """Commit exported files to GitHub repository."""
     with tempfile.TemporaryDirectory() as base_dir:
         # Clone the repository
@@ -347,14 +348,14 @@ async def commit_to_github(output_dir: Path, github_params: GitHubExportParams, 
             repo_url = f"https://{github_params.access_token}@github.com/{github_params.owner}/{github_params.repo}.git" if github_params.access_token else clean_repo_url
             repo = Repo.clone_from(repo_url, base_dir, depth=1)
         except GitCommandError as e:
-            logger.exception("Failed to clone repository: %s", str(e).replace(repo_url, clean_repo_url))
-            raise RuntimeError(f"Failed to clone repository: {e!s}") from e
+            logger.exception("Failed to clone repository: %s", sanitize_for_logging(str(e).replace(repo_url, clean_repo_url)))
+            raise RuntimeError("Failed to clone repository") from e
 
         if repo.working_tree_dir is None:
-            raise HTTPException(status_code=500, detail="Repo working dir could not be established")
+            raise RuntimeError("Repo working dir could not be established")
 
         # If folder_name already exists in repo, remove it before copying new files
-        target_folder = Path(repo.working_tree_dir) / folder_name
+        target_folder = Path(repo.working_tree_dir) / sanitized_folder_name
         await remove_target_folder(target_folder)
 
         # Copy files from output_dir to repo working tree
@@ -362,11 +363,11 @@ async def commit_to_github(output_dir: Path, github_params: GitHubExportParams, 
             if item.name == "_cache":
                 continue
             if item.is_file():
-                shutil.copy2(item, Path(repo.working_tree_dir) / folder_name / item.name)
+                shutil.copy2(item, Path(repo.working_tree_dir) / sanitized_folder_name / item.name)
             elif item.is_dir():
-                shutil.copytree(item, Path(repo.working_tree_dir) / folder_name / item.name, dirs_exist_ok=True, ignore=shutil.ignore_patterns("_cache"))
+                shutil.copytree(item, Path(repo.working_tree_dir) / sanitized_folder_name / item.name, dirs_exist_ok=True, ignore=shutil.ignore_patterns("_cache"))
 
-        update_repo_index_file(Path(repo.working_tree_dir), folder_name)
+        update_repo_index_file(Path(repo.working_tree_dir), sanitized_folder_name)
 
         # Add changes and commit
         try:
@@ -376,10 +377,10 @@ async def commit_to_github(output_dir: Path, github_params: GitHubExportParams, 
             origin = repo.remote(name="origin")
             origin = origin.set_url(repo_url)
             origin.push()
-            logger.info("Committed and pushed changes to origin: %s", clean_repo_url)
+            logger.info("Committed and pushed changes to origin: %s", sanitize_for_logging(clean_repo_url))
         except GitCommandError as e:
-            logger.exception("Failed to commit or push changes: %s", str(e).replace(repo_url, clean_repo_url))
-            raise RuntimeError(f"Failed to commit or push changes: {str(e).replace(repo_url, clean_repo_url)}") from e
+            logger.exception("Failed to commit or push changes: %s", sanitize_for_logging(str(e).replace(repo_url, clean_repo_url)))
+            raise RuntimeError("Failed to commit or push to repository") from e
 
 
 def update_repo_index_file(repo_dir: Path, folder_name: str) -> None:
@@ -390,7 +391,7 @@ def update_repo_index_file(repo_dir: Path, folder_name: str) -> None:
     index_file = repo_dir / "index.html"
     try:
         content = index_file.read_text(encoding="utf-8")
-        new_entry = INDEX_FOLDER_TEMPLATE.replace("{{PROJECT}}", folder_name)
+        new_entry = INDEX_FOLDER_TEMPLATE.replace("{{PROJECT}}", html.escape(folder_name))
         if new_entry not in content:
             content = content.replace(INDEX_NEW_FOLDER_LINE, new_entry + f"\n{INDEX_NEW_FOLDER_LINE}")
             index_file.write_text(content, encoding="utf-8")
