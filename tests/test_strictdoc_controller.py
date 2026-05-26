@@ -479,8 +479,7 @@ async def test_path_normalization() -> None:
             mock_response.assert_called_once()
 
 
-@pytest.mark.asyncio
-async def test_remove_target_folder_nonexistent_creates_dir() -> None:
+def test_remove_target_folder_nonexistent_creates_dir() -> None:
     """When the target folder does not exist it should be created."""
     from app.strictdoc_controller import remove_target_folder
 
@@ -488,14 +487,13 @@ async def test_remove_target_folder_nonexistent_creates_dir() -> None:
         target = Path(tmp) / "new_folder"
         assert not target.exists()
 
-        await remove_target_folder(target)
+        remove_target_folder(target)
 
         assert target.exists()
         assert target.is_dir()
 
 
-@pytest.mark.asyncio
-async def test_remove_target_folder_existing_dir_is_cleared_and_recreated() -> None:
+def test_remove_target_folder_existing_dir_is_cleared_and_recreated() -> None:
     """When the target folder exists as a directory it should be emptied and recreated."""
     from app.strictdoc_controller import remove_target_folder
 
@@ -504,15 +502,14 @@ async def test_remove_target_folder_existing_dir_is_cleared_and_recreated() -> N
         target.mkdir()
         (target / "some_file.txt").write_text("data")
 
-        await remove_target_folder(target)
+        remove_target_folder(target)
 
         assert target.exists()
         assert target.is_dir()
         assert list(target.iterdir()) == []
 
 
-@pytest.mark.asyncio
-async def test_remove_target_folder_existing_file_is_removed() -> None:
+def test_remove_target_folder_existing_file_is_removed() -> None:
     """When target path points to a file it should be unlinked."""
     from app.strictdoc_controller import remove_target_folder
 
@@ -521,14 +518,13 @@ async def test_remove_target_folder_existing_file_is_removed() -> None:
         target.write_text("I am a file")
         assert target.is_file()
 
-        await remove_target_folder(target)
+        remove_target_folder(target)
 
         # File is unlinked; the function does not mkdir after unlinking a file
         assert not target.exists()
 
 
-@pytest.mark.asyncio
-async def test_remove_target_folder_raises_on_rmtree_error() -> None:
+def test_remove_target_folder_raises_on_rmtree_error() -> None:
     """When rmtree fails a RuntimeError should be raised."""
     from app.strictdoc_controller import remove_target_folder
 
@@ -538,7 +534,7 @@ async def test_remove_target_folder_raises_on_rmtree_error() -> None:
 
         with patch("shutil.rmtree", side_effect=OSError("Permission denied")):
             with pytest.raises(RuntimeError, match="Failed to remove existing folder in repo"):
-                await remove_target_folder(target)
+                remove_target_folder(target)
 
 
 def test_update_repo_index_file_inserts_new_entry() -> None:

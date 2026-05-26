@@ -40,6 +40,8 @@ if TYPE_CHECKING:
     from starlette.requests import Request
     from starlette.responses import Response
 
+    from app.strictdoc_metrics import StrictDocMetrics
+
 # Create a custom logger
 logger = logging.getLogger(__name__)
 
@@ -299,7 +301,7 @@ async def export_bulk_with_action(input_dir: Path, output_dir: Path, export_form
         cmd = ["strictdoc", "export", "--formats", export_format, "--output-dir", str(output_dir), str(input_dir)]
         await run_strictdoc_command(cmd)
     except Exception as e:
-        logger.exception("Export failed: %s", str(e))
+        logger.exception("Export command failed: %s", str(e))
         raise RuntimeError(f"Export failed: {e!s}") from e
 
 
@@ -320,11 +322,11 @@ async def export_bulk_to_format(input_dir: Path, output_dir: Path, export_format
     try:
         await export_bulk_with_action(input_dir, output_dir, export_format)
     except Exception as e:
-        logger.exception("Export failed: %s", str(e))
+        logger.exception("Bulk export failed: %s", str(e))
         raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail=f"Export to {export_format} failed: {e!s}") from e
 
 
-async def remove_target_folder(target_folder: Path) -> None:
+def remove_target_folder(target_folder: Path) -> None:
     if not target_folder.exists():
         target_folder.mkdir()
         return
@@ -356,7 +358,7 @@ async def commit_to_github(output_dir: Path, github_params: GitHubExportParams, 
 
         # If folder_name already exists in repo, remove it before copying new files
         target_folder = Path(repo.working_tree_dir) / sanitized_folder_name
-        await remove_target_folder(target_folder)
+        remove_target_folder(target_folder)
 
         # Copy files from output_dir to repo working tree
         for item in output_dir.iterdir():
@@ -389,6 +391,10 @@ def update_repo_index_file(repo_dir: Path, folder_name: str) -> None:
     Index file must already be set up before using this service to commit to github
     """
     index_file = repo_dir / "index.html"
+    repo_dir_resolved = repo_dir.resolve()
+    index_file = (repo_dir / "index.html").resolve()
+    if not index_file.is_relative_to(repo_dir_resolved):
+        raise RuntimeError("Index file path is outside the repository directory")
     try:
         content = index_file.read_text(encoding="utf-8")
         new_entry = INDEX_FOLDER_TEMPLATE.replace("{{PROJECT}}", html.escape(folder_name))
@@ -522,6 +528,25 @@ def _build_bulk_zip_response(
     return FileResponse(path=str(persistent_temp_file), media_type="application/zip", filename=secure_filename, background=BackgroundTask(cleanup))
 
 
+def check_sdoc_content(content: dict[str, str], export_format: str, metrics: StrictDocMetrics) -> None:
+    """Basic checks for sdoc content. Raises HTTPException if failed."""
+    for doc_name, doc_content in content.items():
+        if not doc_content or "[DOCUMENT]" not in doc_content:
+            metrics.record_export_failure()
+            increment_export_failure(export_format)
+            raise HTTPException(
+                status_code=HTTPStatus.BAD_REQUEST,
+                detail=f"Invalid SDOC content in '{sanitize_for_logging(doc_name)}': Missing [DOCUMENT] section",
+            )
+        if not doc_name.endswith(".sdoc"):
+            metrics.record_export_failure()
+            increment_export_failure(export_format)
+            raise HTTPException(
+                status_code=HTTPStatus.BAD_REQUEST,
+                detail=f"Invalid SDOC file name: {sanitize_for_logging(doc_name)}. All file names must end with .sdoc",
+            )
+
+
 @overload
 async def _export_documents(export_params: StrictdocExportParams, sanitized_file_name: str) -> FileResponse: ...
 
@@ -537,21 +562,7 @@ async def _export_documents(export_params: StrictdocExportParams | GitHubExportP
     export_completed = False
     export_format = (export_params.format if isinstance(export_params, StrictdocExportParams) else "html").lower()
     # Validate all SDOC content entries
-    for doc_name, doc_content in export_params.content.items():
-        if not doc_content or "[DOCUMENT]" not in doc_content:
-            metrics.record_export_failure()
-            increment_export_failure(export_format)
-            raise HTTPException(
-                status_code=HTTPStatus.BAD_REQUEST,
-                detail=f"Invalid SDOC content in '{sanitize_for_logging(doc_name)}': Missing [DOCUMENT] section",
-            )
-        if not doc_name.endswith(".sdoc"):
-            metrics.record_export_failure()
-            increment_export_failure(export_format)
-            raise HTTPException(
-                status_code=HTTPStatus.BAD_REQUEST,
-                detail=f"Invalid SDOC file name: {sanitize_for_logging(doc_name)}. All file names must end with .sdoc",
-            )
+    check_sdoc_content(export_params.content, export_format, metrics)
 
     try:
         with tempfile.TemporaryDirectory() as temp_dir:
