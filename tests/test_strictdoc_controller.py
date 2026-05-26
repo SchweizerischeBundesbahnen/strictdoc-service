@@ -648,7 +648,7 @@ async def test_commit_to_github_uses_default_commit_message() -> None:
         with (
             patch("app.strictdoc_controller.Repo.clone_from", return_value=mock_repo),
             patch("app.strictdoc_controller.update_repo_index_file"),
-            patch("app.strictdoc_controller.remove_target_folder", new_callable=AsyncMock),
+            patch("app.strictdoc_controller.remove_target_folder"),
         ):
             await commit_to_github(output_dir, params, "exported-docs")
 
@@ -694,7 +694,7 @@ async def test_commit_to_github_push_failure_raises_runtime_error() -> None:
         with (
             patch("app.strictdoc_controller.Repo.clone_from", return_value=mock_repo),
             patch("app.strictdoc_controller.update_repo_index_file"),
-            patch("app.strictdoc_controller.remove_target_folder", new_callable=AsyncMock),
+            patch("app.strictdoc_controller.remove_target_folder"),
         ):
             with pytest.raises(RuntimeError, match="Failed to commit or push to repository"):
                 await commit_to_github(output_dir, params, "exported-docs")
