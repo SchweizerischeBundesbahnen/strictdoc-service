@@ -22,7 +22,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from git import GitCommandError, Repo
 from pathvalidate import sanitize_filename
 from prometheus_fastapi_instrumentator import Instrumentator
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from starlette.background import BackgroundTask
 
 # Import StrictDoc version directly
@@ -33,7 +33,7 @@ from strictdoc.core.project_config import ProjectConfig  # type: ignore[import]
 
 from app.constants import EXPORT_FORMATS
 from app.metrics_server import METRICS_SERVER_ENABLED, MetricsServer
-from app.prometheus_metrics import increment_export_failure, observe_export_duration
+from app.prometheus_metrics import increment_export_failure, increment_export_success, observe_export_duration
 from app.sanitization import normalize_line_endings, sanitize_for_logging
 from app.strictdoc_metrics import get_strictdoc_metrics
 
@@ -210,11 +210,11 @@ class VersionInfo(BaseModel):
     Contains version information about Python, StrictDoc, and the platform.
     """
 
-    python: str
-    strictdoc: str
-    platform: str
-    timestamp: str
-    strictdoc_service: str | None = None
+    python: str = Field(description="Python version")
+    strictdoc: str = Field(description="Installed StrictDoc Version")
+    platform: str = Field(description="Platform the service runs in")
+    timestamp: str = Field(description="Build timestamp")
+    strictdoc_service: str | None = Field(description="StrictDoc Service Version", default=None)
 
 
 class ErrorResponse(BaseModel):
@@ -223,27 +223,27 @@ class ErrorResponse(BaseModel):
     Contains error information and optional details.
     """
 
-    error: str
-    details: str | None = None
+    error: str = Field(description="Error message")
+    details: str | None = Field(description="Error details", default=None)
 
 
 class GitHubExportParams(BaseModel):
     """GitHub export params model"""
 
-    content: dict[str, str]
-    folder_name: str
-    owner: str
-    repo: str
-    access_token: str | None
-    commit_message: str | None
+    content: dict[str, str] = Field(description="StrictDoc Content of the form {key.sdoc: content}")
+    folder_name: str = Field(description="Newly created folder to export the html content into")
+    owner: str = Field(description="Repository owner", pattern=r"[A-Za-z0-9\._-]+")
+    repo: str = Field(description="Repository name", pattern=r"[A-Za-z0-9\._-]+")
+    access_token: str | None = Field(description="Access token for the repository", default=None)
+    commit_message: str | None = Field(description="Commit message", default=None)
 
 
 class StrictdocExportParams(BaseModel):
     """Strictdoc export model"""
 
-    content: dict[str, str]
-    format: str
-    file_name: str
+    content: dict[str, str] = Field(description="StrictDoc Content of the form {key.sdoc: content}")
+    format: str = Field(description="StrictDoc export format")
+    file_name: str = Field(description="Returned file name")
 
 
 # Middleware for logging
@@ -445,6 +445,7 @@ async def export_bulk_to_format(input_dir: Path, output_dir: Path, export_format
 
 async def remove_target_folder(target_folder: Path) -> None:
     if not target_folder.exists():
+        target_folder.mkdir()
         return
     try:
         if target_folder.is_file():
@@ -493,10 +494,9 @@ async def commit_to_github(output_dir: Path, github_params: GitHubExportParams, 
             repo.index.commit(commit_message)
             origin = repo.remote(name="origin")
             origin = origin.set_url(repo_url)
-            logger.info("Current repo URL: %s", origin.url)
             origin.push()
         except GitCommandError as e:
-            logger.exception("Failed to commit or push changes: %s", str(e))
+            logger.exception("Failed to commit or push changes: %s", str(e).replace(repo_url, "github"))
             raise RuntimeError(f"Failed to commit or push changes: {e!s}") from e
 
 
@@ -655,7 +655,7 @@ async def _export_documents(export_params: StrictdocExportParams | GitHubExportP
     export_format = (export_params.format if isinstance(export_params, StrictdocExportParams) else "html").lower()
     # Validate all SDOC content entries
     for doc_name, doc_content in export_params.content.items():
-        if not doc_content or "[DOCUMENT]\n" not in doc_content:
+        if not doc_content or "[DOCUMENT]" not in doc_content:
             metrics.record_export_failure()
             increment_export_failure(export_format)
             raise HTTPException(
@@ -712,6 +712,7 @@ async def _export_documents(export_params: StrictdocExportParams | GitHubExportP
         else:
             duration_ms = (time.perf_counter() - start_time) * 1000
             metrics.record_export_success(duration_ms)
+            increment_export_success(export_format)
             observe_export_duration(export_format, duration_ms / 1000)
 
 
