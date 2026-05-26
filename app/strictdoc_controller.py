@@ -241,17 +241,9 @@ async def get_version() -> VersionInfo:
 
     """
     service_version = os.getenv("STRICTDOC_SERVICE_VERSION", "dev")
+    timestamp = os.getenv("STRICTDOC_SERVICE_BUILD_TIMESTAMP", "")
     python_version = sys.version.split()[0]
     platform_info = platform.platform()
-
-    # Use the build timestamp from the Docker image build time
-    timestamp = ""
-    timestamp_file = Path("/opt/strictdoc/.build_timestamp")
-    if timestamp_file.exists():
-        try:
-            timestamp = timestamp_file.read_text().strip()
-        except Exception as e:
-            logger.warning("Failed to read build timestamp: %s", e)
 
     return VersionInfo(python=python_version, strictdoc=strictdoc_version, platform=platform_info, timestamp=timestamp, strictdoc_service=service_version)
 
@@ -351,7 +343,7 @@ async def commit_to_github(output_dir: Path, github_params: GitHubExportParams, 
     with tempfile.TemporaryDirectory() as base_dir:
         # Clone the repository
         try:
-            clean_repo_url = "https://github.com/{github_params.owner}/{github_params.repo}.git"
+            clean_repo_url = f"https://github.com/{github_params.owner}/{github_params.repo}.git"
             repo_url = f"https://{github_params.access_token}@github.com/{github_params.owner}/{github_params.repo}.git" if github_params.access_token else clean_repo_url
             repo = Repo.clone_from(repo_url, base_dir, depth=1)
         except GitCommandError as e:
@@ -387,7 +379,7 @@ async def commit_to_github(output_dir: Path, github_params: GitHubExportParams, 
             logger.info("Committed and pushed changes to origin: %s", clean_repo_url)
         except GitCommandError as e:
             logger.exception("Failed to commit or push changes: %s", str(e).replace(repo_url, clean_repo_url))
-            raise RuntimeError(f"Failed to commit or push changes: {e!s}") from e
+            raise RuntimeError(f"Failed to commit or push changes: {str(e).replace(repo_url, clean_repo_url)}") from e
 
 
 def update_repo_index_file(repo_dir: Path, folder_name: str) -> None:

@@ -1,6 +1,6 @@
 """Tests for the StrictDoc controller module."""
 
-import asyncio
+import shutil
 import tempfile
 from pathlib import Path
 from unittest.mock import AsyncMock, Mock, patch
@@ -220,6 +220,17 @@ async def test_export_bulk_with_action() -> None:
             assert "html" in args
 
 
+@pytest.mark.asyncio
+async def test_missing_sdoc_format_raises() -> None:
+    """Test HTTPException raised when .sdoc missing in file name"""
+    from app.strictdoc_controller import _export_documents
+
+    params = _make_github_params()
+    params.content = {"0": "[DOCUMENT]"}
+    with pytest.raises(HTTPException):
+        await _export_documents(params, "test", lambda x, y, z: None)
+
+
 def test_validation_exception_handler_format_error(client: TestClient) -> None:
     """Test that format validation errors return 400 status."""
     response = client.post(
@@ -247,6 +258,27 @@ def test_build_single_file_response_html_creates_zip() -> None:
 
         with patch("app.strictdoc_controller.validate_export_paths"), patch("shutil.copy2"):
             response = _build_single_file_response(output_dir, "html", "test-output")
+
+            assert response.media_type == "application/zip"
+            assert response.filename == "test-output.zip"
+
+
+def test_build_bulk_zip_response_html_creates_zip() -> None:
+    """Test that _build_bulk_zip_response creates a zip for HTML format."""
+    from app.strictdoc_controller import _build_bulk_zip_response
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        temp_path = Path(temp_dir)
+        output_dir = temp_path / "output"
+        output_dir.mkdir()
+
+        # Create some HTML output files
+        html_dir = output_dir / "html"
+        html_dir.mkdir()
+        (html_dir / "index.html").write_text("<html>Test</html>")
+
+        with patch("app.strictdoc_controller.validate_export_paths"), patch("shutil.copy2"):
+            response = _build_bulk_zip_response(Path(temp_dir), output_dir, "html", "test-output")
 
             assert response.media_type == "application/zip"
             assert response.filename == "test-output.zip"
@@ -445,3 +477,352 @@ async def test_path_normalization() -> None:
 
             mock_copy.assert_called_once()
             mock_response.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_remove_target_folder_nonexistent_creates_dir() -> None:
+    """When the target folder does not exist it should be created."""
+    from app.strictdoc_controller import remove_target_folder
+
+    with tempfile.TemporaryDirectory() as tmp:
+        target = Path(tmp) / "new_folder"
+        assert not target.exists()
+
+        await remove_target_folder(target)
+
+        assert target.exists()
+        assert target.is_dir()
+
+
+@pytest.mark.asyncio
+async def test_remove_target_folder_existing_dir_is_cleared_and_recreated() -> None:
+    """When the target folder exists as a directory it should be emptied and recreated."""
+    from app.strictdoc_controller import remove_target_folder
+
+    with tempfile.TemporaryDirectory() as tmp:
+        target = Path(tmp) / "existing_folder"
+        target.mkdir()
+        (target / "some_file.txt").write_text("data")
+
+        await remove_target_folder(target)
+
+        assert target.exists()
+        assert target.is_dir()
+        assert list(target.iterdir()) == []
+
+
+@pytest.mark.asyncio
+async def test_remove_target_folder_existing_file_is_removed() -> None:
+    """When target path points to a file it should be unlinked."""
+    from app.strictdoc_controller import remove_target_folder
+
+    with tempfile.TemporaryDirectory() as tmp:
+        target = Path(tmp) / "file_not_folder"
+        target.write_text("I am a file")
+        assert target.is_file()
+
+        await remove_target_folder(target)
+
+        # File is unlinked; the function does not mkdir after unlinking a file
+        assert not target.exists()
+
+
+@pytest.mark.asyncio
+async def test_remove_target_folder_raises_on_rmtree_error() -> None:
+    """When rmtree fails a RuntimeError should be raised."""
+    from app.strictdoc_controller import remove_target_folder
+
+    with tempfile.TemporaryDirectory() as tmp:
+        target = Path(tmp) / "locked_folder"
+        target.mkdir()
+
+        with patch("shutil.rmtree", side_effect=OSError("Permission denied")):
+            with pytest.raises(RuntimeError, match="Failed to remove existing folder in repo"):
+                await remove_target_folder(target)
+
+
+def test_update_repo_index_file_inserts_new_entry() -> None:
+    """A new folder entry should be inserted before the placeholder comment."""
+    from app.strictdoc_controller import update_repo_index_file, INDEX_NEW_FOLDER_LINE
+
+    with tempfile.TemporaryDirectory() as tmp:
+        repo_dir = Path(tmp)
+        index_file = repo_dir / "index.html"
+        index_file.write_text(f"<html>{INDEX_NEW_FOLDER_LINE}</html>", encoding="utf-8")
+
+        update_repo_index_file(repo_dir, "my-project")
+
+        updated = index_file.read_text(encoding="utf-8")
+        assert "my-project" in updated
+        assert INDEX_NEW_FOLDER_LINE in updated
+        # Placeholder must still be present so subsequent calls keep working
+        assert updated.index("my-project") < updated.index(INDEX_NEW_FOLDER_LINE)
+
+
+def test_update_repo_index_file_idempotent() -> None:
+    """Calling update twice should not duplicate the entry."""
+    from app.strictdoc_controller import update_repo_index_file, INDEX_NEW_FOLDER_LINE, INDEX_FOLDER_TEMPLATE
+
+    with tempfile.TemporaryDirectory() as tmp:
+        repo_dir = Path(tmp)
+        index_file = repo_dir / "index.html"
+        index_file.write_text(f"<html>{INDEX_NEW_FOLDER_LINE}</html>", encoding="utf-8")
+
+        update_repo_index_file(repo_dir, "my-project")
+        update_repo_index_file(repo_dir, "my-project")
+
+        updated = index_file.read_text(encoding="utf-8")
+        assert updated.count(INDEX_FOLDER_TEMPLATE.replace("{{PROJECT}}", "my-project")) == 1
+
+
+def test_update_repo_index_file_missing_index_raises() -> None:
+    """Missing index.html should propagate as RuntimeError."""
+    from app.strictdoc_controller import update_repo_index_file
+
+    with tempfile.TemporaryDirectory() as tmp:
+        repo_dir = Path(tmp)
+        # No index.html created
+
+        with pytest.raises(RuntimeError, match="Failed to update index file"):
+            update_repo_index_file(repo_dir, "my-project")
+
+
+def _make_github_params(**overrides: object):  # type: ignore[return]
+    from app.strictdoc_controller import GitHubExportParams
+
+    defaults: dict[str, object] = {
+        "content": {"doc.sdoc": "[DOCUMENT]\nTITLE: Test\n"},
+        "folder_name": "exported-docs",
+        "owner": "test-owner",
+        "repo": "test-repo",
+        "access_token": "secret-token",
+        "commit_message": "Test commit",
+    }
+    defaults.update(overrides)
+    return GitHubExportParams(**defaults)  # type: ignore[arg-type]
+
+
+@pytest.mark.asyncio
+async def test_commit_to_github_successful_with_token() -> None:
+    """commit_to_github should clone, copy files, update index, and push."""
+    from app.strictdoc_controller import commit_to_github
+
+    with tempfile.TemporaryDirectory() as tmp:
+        output_dir = Path(tmp) / "output"
+        output_dir.mkdir()
+        (output_dir / "doc.html").write_text("<html>hi</html>")
+        (output_dir / "test_folder").mkdir()
+
+        mock_repo = Mock()
+        mock_repo.working_tree_dir = tmp
+        mock_origin = Mock()
+        mock_origin.set_url.return_value = mock_origin
+        mock_repo.remote.return_value = mock_origin
+
+        params = _make_github_params()
+
+        with (
+            patch("app.strictdoc_controller.Repo.clone_from", return_value=mock_repo),
+            patch("app.strictdoc_controller.update_repo_index_file"),
+        ):
+            await commit_to_github(output_dir, params, "exported-docs")
+
+        mock_repo.git.add.assert_called_once_with(A=True)
+        mock_repo.index.commit.assert_called_once_with("Test commit")
+        mock_origin.push.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_commit_to_github_uses_default_commit_message() -> None:
+    """When commit_message is None the default message should be used."""
+    from app.strictdoc_controller import commit_to_github
+
+    with tempfile.TemporaryDirectory() as tmp:
+        output_dir = Path(tmp) / "output"
+        output_dir.mkdir()
+
+        mock_repo = Mock()
+        mock_repo.working_tree_dir = tmp
+        mock_origin = Mock()
+        mock_origin.set_url.return_value = mock_origin
+        mock_repo.remote.return_value = mock_origin
+
+        params = _make_github_params(commit_message=None)
+
+        with (
+            patch("app.strictdoc_controller.Repo.clone_from", return_value=mock_repo),
+            patch("app.strictdoc_controller.update_repo_index_file"),
+            patch("app.strictdoc_controller.remove_target_folder", new_callable=AsyncMock),
+        ):
+            await commit_to_github(output_dir, params, "exported-docs")
+
+        mock_repo.index.commit.assert_called_once_with("Add exported StrictDoc files")
+
+
+@pytest.mark.asyncio
+async def test_commit_to_github_clone_failure_raises_runtime_error() -> None:
+    """GitCommandError during clone should be re-raised as RuntimeError."""
+    from app.strictdoc_controller import commit_to_github
+    from git import GitCommandError
+
+    with tempfile.TemporaryDirectory() as tmp:
+        output_dir = Path(tmp) / "output"
+        output_dir.mkdir()
+
+        params = _make_github_params()
+
+        with patch("app.strictdoc_controller.Repo.clone_from", side_effect=GitCommandError("clone", "failed")):
+            with pytest.raises(RuntimeError, match="Failed to clone repository"):
+                await commit_to_github(output_dir, params, "exported-docs")
+
+
+@pytest.mark.asyncio
+async def test_commit_to_github_push_failure_raises_runtime_error() -> None:
+    """GitCommandError during push should be re-raised as RuntimeError."""
+    from app.strictdoc_controller import commit_to_github
+    from git import GitCommandError
+
+    with tempfile.TemporaryDirectory() as tmp:
+        output_dir = Path(tmp) / "output"
+        output_dir.mkdir()
+
+        mock_repo = Mock()
+        mock_repo.working_tree_dir = tmp
+        mock_origin = Mock()
+        mock_origin.set_url.return_value = mock_origin
+        mock_origin.push.side_effect = GitCommandError("push", "rejected")
+        mock_repo.remote.return_value = mock_origin
+
+        params = _make_github_params()
+
+        with (
+            patch("app.strictdoc_controller.Repo.clone_from", return_value=mock_repo),
+            patch("app.strictdoc_controller.update_repo_index_file"),
+            patch("app.strictdoc_controller.remove_target_folder", new_callable=AsyncMock),
+        ):
+            with pytest.raises(RuntimeError, match="Failed to commit or push changes"):
+                await commit_to_github(output_dir, params, "exported-docs")
+
+
+@pytest.mark.asyncio
+async def test_commit_to_github_skips_cache_directory() -> None:
+    """The _cache directory in output_dir must not be copied to the repo."""
+    from app.strictdoc_controller import commit_to_github
+
+    with tempfile.TemporaryDirectory() as tmp:
+        output_dir = Path(tmp) / "output"
+        output_dir.mkdir()
+        (output_dir / "doc.html").write_text("content")
+        cache_dir = output_dir / "_cache"
+        cache_dir.mkdir()
+        (cache_dir / "cached.bin").write_text("cache data")
+
+        copied_items: list[str] = []
+        original_copy2 = shutil.copy2
+
+        def track_copy(src: object, dst: object) -> object:
+            copied_items.append(str(src))
+            return original_copy2(src, dst)
+
+        mock_repo = Mock()
+        mock_repo.working_tree_dir = tmp
+        mock_origin = Mock()
+        mock_origin.set_url.return_value = mock_origin
+        mock_repo.remote.return_value = mock_origin
+
+        params = _make_github_params()
+
+        with (
+            patch("app.strictdoc_controller.Repo.clone_from", return_value=mock_repo),
+            patch("app.strictdoc_controller.update_repo_index_file"),
+            patch("shutil.copy2", side_effect=track_copy),
+        ):
+            await commit_to_github(output_dir, params, "exported-docs")
+
+        assert not any("_cache" in item for item in copied_items)
+
+
+@pytest.mark.asyncio
+async def test_commit_to_github_none_working_tree_raises_http_exception() -> None:
+    """If working_tree_dir is None, an HTTPException should be raised."""
+    from app.strictdoc_controller import commit_to_github
+
+    with tempfile.TemporaryDirectory() as tmp:
+        output_dir = Path(tmp) / "output"
+        output_dir.mkdir()
+
+        mock_repo = Mock()
+        mock_repo.working_tree_dir = None
+
+        params = _make_github_params()
+
+        with patch("app.strictdoc_controller.Repo.clone_from", return_value=mock_repo):
+            with pytest.raises(HTTPException) as exc_info:
+                await commit_to_github(output_dir, params, "exported-docs")
+
+        assert exc_info.value.status_code == 500
+
+
+def test_export_github_endpoint_disabled_by_default(client: TestClient) -> None:
+    """The /export-github endpoint must return 404 when ENABLE_GITHUB_EXPORT is not set."""
+    response = client.post(
+        "/export-github",
+        json={
+            "content": {"doc.sdoc": "[DOCUMENT]\nTITLE: Test\n"},
+            "folder_name": "my-docs",
+            "owner": "test-owner",
+            "repo": "test-repo",
+        },
+    )
+    assert response.status_code == 404
+
+
+def test_export_github_endpoint_enabled(monkeypatch: pytest.MonkeyPatch, client: TestClient) -> None:
+    """The /export-github endpoint should call _export_documents when enabled."""
+    from starlette.responses import Response
+
+    monkeypatch.setenv("ENABLE_GITHUB_EXPORT", "true")
+
+    with patch("app.strictdoc_controller._export_documents", new_callable=AsyncMock) as mock_export:
+        mock_export.return_value = Response(content=b"", media_type="application/zip")
+
+        client.post(
+            "/export-github",
+            json={
+                "content": {"doc.sdoc": "[DOCUMENT]\nTITLE: Test\n"},
+                "folder_name": "my-docs",
+                "owner": "test-owner",
+                "repo": "test-repo",
+            },
+        )
+
+    mock_export.assert_called_once()
+    call_kwargs = mock_export.call_args
+    export_params = call_kwargs.args[0]
+    assert export_params.folder_name == "my-docs"
+    assert export_params.owner == "test-owner"
+
+
+def test_export_github_endpoint_sanitizes_folder_name(monkeypatch: pytest.MonkeyPatch, client: TestClient) -> None:
+    """The /export-github endpoint should sanitize the folder_name before passing it on."""
+    from starlette.responses import Response
+
+    monkeypatch.setenv("ENABLE_GITHUB_EXPORT", "true")
+
+    with patch("app.strictdoc_controller._export_documents", new_callable=AsyncMock) as mock_export:
+        mock_export.return_value = Response(content=b"", media_type="application/zip")
+
+        client.post(
+            "/export-github",
+            json={
+                "content": {"doc.sdoc": "[DOCUMENT]\nTITLE: Test\n"},
+                "folder_name": "my-docs",
+                "owner": "test-owner",
+                "repo": "test-repo",
+            },
+        )
+
+    # The second positional arg to _export_documents is the sanitized name
+    sanitized_name = mock_export.call_args.args[1]
+    assert "/" not in sanitized_name
+    assert "\\" not in sanitized_name
