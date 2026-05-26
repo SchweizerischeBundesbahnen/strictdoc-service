@@ -700,7 +700,7 @@ async def test_commit_to_github_push_failure_raises_runtime_error() -> None:
             patch("app.strictdoc_controller.update_repo_index_file"),
             patch("app.strictdoc_controller.remove_target_folder", new_callable=AsyncMock),
         ):
-            with pytest.raises(RuntimeError, match="Failed to commit or push changes"):
+            with pytest.raises(RuntimeError, match="Failed to commit or push to repository"):
                 await commit_to_github(output_dir, params, "exported-docs")
 
 
@@ -743,7 +743,7 @@ async def test_commit_to_github_skips_cache_directory() -> None:
 
 
 @pytest.mark.asyncio
-async def test_commit_to_github_none_working_tree_raises_http_exception() -> None:
+async def test_commit_to_github_none_working_tree_raises_runtime_error() -> None:
     """If working_tree_dir is None, an HTTPException should be raised."""
     from app.strictdoc_controller import commit_to_github
 
@@ -757,7 +757,7 @@ async def test_commit_to_github_none_working_tree_raises_http_exception() -> Non
         params = _make_github_params()
 
         with patch("app.strictdoc_controller.Repo.clone_from", return_value=mock_repo):
-            with pytest.raises(HTTPException) as exc_info:
+            with pytest.raises(RuntimeError) as exc_info:
                 await commit_to_github(output_dir, params, "exported-docs")
 
         assert exc_info.value.status_code == 500
