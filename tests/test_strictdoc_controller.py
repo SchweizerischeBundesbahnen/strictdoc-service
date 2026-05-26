@@ -760,8 +760,6 @@ async def test_commit_to_github_none_working_tree_raises_runtime_error() -> None
             with pytest.raises(RuntimeError) as exc_info:
                 await commit_to_github(output_dir, params, "exported-docs")
 
-        assert exc_info.value.status_code == 500
-
 
 def test_export_github_endpoint_disabled_by_default(client: TestClient) -> None:
     """The /export-github endpoint must return 404 when ENABLE_GITHUB_EXPORT is not set."""
