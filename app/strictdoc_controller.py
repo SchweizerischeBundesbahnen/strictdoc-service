@@ -351,7 +351,7 @@ async def commit_to_github(output_dir: Path, github_params: GitHubExportParams, 
             repo_url = f"https://{token}@github.com/{github_params.owner}/{github_params.repo}.git" if token else clean_repo_url
             repo = Repo.clone_from(repo_url, base_dir, depth=1)
         except Exception as e:
-            logger.exception("Failed to clone repository: %s", sanitize_for_logging(remove_token_for_logging(str(e), token, repo_url, clean_repo_url)))
+            logger.exception("Failed to clone repository: %s", sanitize_for_logging(remove_token_for_logging(str(e), token, repo_url, clean_repo_url)), exc_info=False)
             raise RuntimeError("Failed to clone repository") from e
 
         if repo.working_tree_dir is None:
@@ -382,7 +382,7 @@ async def commit_to_github(output_dir: Path, github_params: GitHubExportParams, 
             origin.push()
             logger.info("Committed and pushed changes to origin: %s", sanitize_for_logging(clean_repo_url))
         except Exception as e:
-            logger.exception("Failed to commit or push changes: %s", sanitize_for_logging(remove_token_for_logging(str(e), token, repo_url, clean_repo_url)))
+            logger.exception("Failed to commit or push changes: %s", sanitize_for_logging(remove_token_for_logging(str(e), token, repo_url, clean_repo_url)), exc_info=False)
             raise RuntimeError("Failed to commit or push to repository") from e
 
 
