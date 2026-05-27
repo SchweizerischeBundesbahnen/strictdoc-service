@@ -19,7 +19,7 @@ import uvicorn
 from fastapi import FastAPI, HTTPException
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse
-from git import GitCommandError, Repo
+from git import Repo
 from pathvalidate import sanitize_filename
 from prometheus_fastapi_instrumentator import Instrumentator
 from pydantic import BaseModel, Field
@@ -31,7 +31,7 @@ from strictdoc import __version__ as strictdoc_version  # type: ignore[import]
 from app.constants import EXPORT_FORMATS
 from app.metrics_server import METRICS_SERVER_ENABLED, MetricsServer
 from app.prometheus_metrics import increment_export_failure, increment_export_success, observe_export_duration
-from app.sanitization import sanitize_for_logging
+from app.sanitization import remove_token_for_logging, sanitize_for_logging
 from app.strictdoc_metrics import get_strictdoc_metrics
 
 if TYPE_CHECKING:
@@ -344,13 +344,14 @@ def remove_target_folder(target_folder: Path) -> None:
 async def commit_to_github(output_dir: Path, github_params: GitHubExportParams, sanitized_folder_name: str) -> None:
     """Commit exported files to GitHub repository."""
     with tempfile.TemporaryDirectory() as base_dir:
+        token = github_params.access_token
         # Clone the repository
         try:
             clean_repo_url = f"https://github.com/{github_params.owner}/{github_params.repo}.git"
-            repo_url = f"https://{github_params.access_token}@github.com/{github_params.owner}/{github_params.repo}.git" if github_params.access_token else clean_repo_url
+            repo_url = f"https://{token}@github.com/{github_params.owner}/{github_params.repo}.git" if token else clean_repo_url
             repo = Repo.clone_from(repo_url, base_dir, depth=1)
-        except GitCommandError as e:
-            logger.exception("Failed to clone repository: %s", sanitize_for_logging(str(e).replace(repo_url, clean_repo_url)))
+        except Exception as e:
+            logger.exception("Failed to clone repository: %s", sanitize_for_logging(remove_token_for_logging(str(e), token, repo_url, clean_repo_url)))
             raise RuntimeError("Failed to clone repository") from e
 
         if repo.working_tree_dir is None:
@@ -380,8 +381,8 @@ async def commit_to_github(output_dir: Path, github_params: GitHubExportParams, 
             origin = origin.set_url(repo_url)
             origin.push()
             logger.info("Committed and pushed changes to origin: %s", sanitize_for_logging(clean_repo_url))
-        except GitCommandError as e:
-            logger.exception("Failed to commit or push changes: %s", sanitize_for_logging(str(e).replace(repo_url, clean_repo_url)))
+        except Exception as e:
+            logger.exception("Failed to commit or push changes: %s", sanitize_for_logging(remove_token_for_logging(str(e), token, repo_url, clean_repo_url)))
             raise RuntimeError("Failed to commit or push to repository") from e
 
 
@@ -390,7 +391,6 @@ def update_repo_index_file(repo_dir: Path, folder_name: str) -> None:
 
     Index file must already be set up before using this service to commit to github
     """
-    index_file = repo_dir / "index.html"
     repo_dir_resolved = repo_dir.resolve()
     index_file = (repo_dir / "index.html").resolve()
     if not index_file.is_relative_to(repo_dir_resolved):
