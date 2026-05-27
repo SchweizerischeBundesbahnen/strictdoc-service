@@ -241,7 +241,7 @@ async def check_feature_flags(request: Request, call_next: Callable[[Request], A
     Return NotFound if set to false
     """
     if request.url.path == "/export-github" and os.getenv("ENABLE_GITHUB_EXPORT", "false").lower() == "false":
-        return JSONResponse(status_code=404, content={"detail": "Endpoint not enabled"})
+        return JSONResponse(status_code=HTTPStatus.NOT_FOUND, content={"detail": "Endpoint not enabled"})
     return await call_next(request)
 
 
