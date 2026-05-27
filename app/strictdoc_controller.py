@@ -595,7 +595,7 @@ async def _export_documents(export_params: StrictdocExportParams | GitHubExportP
     except HTTPException:
         raise
     except Exception as e:
-        logger.exception("Export failed: %s", str(e))
+        logger.exception("Export failed: %s", str(e), exc_info=False)
         raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail=f"Export failed: {e!s}") from e
     finally:
         # Ensure metrics are recorded even on asyncio.CancelledError (which is a BaseException)
