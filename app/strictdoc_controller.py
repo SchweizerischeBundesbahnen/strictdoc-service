@@ -352,7 +352,7 @@ async def commit_to_github(output_dir: Path, github_params: GitHubExportParams, 
             repo = Repo.clone_from(repo_url, base_dir, depth=1)
         except Exception as e:
             logger.exception("Failed to clone repository: %s", sanitize_for_logging(remove_token_for_logging(str(e), token, repo_url, clean_repo_url)), exc_info=False)
-            raise RuntimeError("Failed to clone repository") from e
+            raise RuntimeError("Failed to clone repository") from None
 
         if repo.working_tree_dir is None:
             raise RuntimeError("Repo working dir could not be established")
@@ -383,7 +383,7 @@ async def commit_to_github(output_dir: Path, github_params: GitHubExportParams, 
             logger.info("Committed and pushed changes to origin: %s", sanitize_for_logging(clean_repo_url))
         except Exception as e:
             logger.exception("Failed to commit or push changes: %s", sanitize_for_logging(remove_token_for_logging(str(e), token, repo_url, clean_repo_url)), exc_info=False)
-            raise RuntimeError("Failed to commit or push to repository") from e
+            raise RuntimeError("Failed to commit or push to repository") from None
 
 
 def update_repo_index_file(repo_dir: Path, folder_name: str) -> None:
@@ -595,7 +595,7 @@ async def _export_documents(export_params: StrictdocExportParams | GitHubExportP
     except HTTPException:
         raise
     except Exception as e:
-        logger.exception("Export failed: %s", str(e), exc_info=False)
+        logger.exception("Export failed: %s", str(e))
         raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail=f"Export failed: {e!s}") from e
     finally:
         # Ensure metrics are recorded even on asyncio.CancelledError (which is a BaseException)
