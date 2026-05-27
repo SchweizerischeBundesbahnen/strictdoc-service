@@ -235,6 +235,16 @@ async def log_requests(request: Request, call_next: Callable[[Request], Awaitabl
     return response
 
 
+@app.middleware("http")
+async def check_feature_flags(request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
+    """Check for ENABLE_GITHUB_EXPORT
+    Return NotFound if set to false
+    """
+    if request.url.path == "/export-github" and os.getenv("ENABLE_GITHUB_EXPORT", "false").lower() == "false":
+        return JSONResponse(status_code=404, content={"detail": "Endpoint not enabled"})
+    return await call_next(request)
+
+
 @app.get("/version")
 async def get_version() -> VersionInfo:
     """Get version information about the service and its dependencies.
@@ -652,8 +662,6 @@ async def export_documents_github(export_params: GitHubExportParams) -> FileResp
     Returns:
         FileResponse: The exported ZIP archive.
     """
-    if os.getenv("ENABLE_GITHUB_EXPORT", "false").lower() == "false":
-        raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="Endpoint not enabled")
     folder_name = export_params.folder_name
 
     logger.info(
