@@ -10,7 +10,7 @@ readme = "README.md"
 requires-python = ">=3.14,<3.15"
 dependencies = [
     "strictdoc==0.21.1",
-    "fastapi==0.136.1",
+    "fastapi==0.136.3",
     "uvicorn==0.47.0",
     "pathvalidate==3.3.1",
     "prometheus-client==0.25.0",
