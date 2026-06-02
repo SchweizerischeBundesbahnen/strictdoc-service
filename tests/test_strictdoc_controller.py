@@ -5,6 +5,7 @@ import tempfile
 from pathlib import Path
 from unittest.mock import AsyncMock, Mock, patch
 
+from git.util import Actor
 import pytest
 from fastapi.testclient import TestClient
 from fastapi import HTTPException
@@ -623,7 +624,7 @@ def test_commit_to_github_successful_with_token() -> None:
             commit_to_github(output_dir, params, "exported-docs")
 
         mock_repo.git.add.assert_called_once_with(A=True)
-        mock_repo.index.commit.assert_called_once_with("Test commit")
+        mock_repo.index.commit.assert_called_once_with("Test commit", author=Actor(name="StrictDoc Exporter", email="polarion-opensource@sbb.ch"))
         mock_origin.push.assert_called_once()
 
 
@@ -650,7 +651,7 @@ def test_commit_to_github_uses_default_commit_message() -> None:
         ):
             commit_to_github(output_dir, params, "exported-docs")
 
-        mock_repo.index.commit.assert_called_once_with("Add exported StrictDoc files")
+        mock_repo.index.commit.assert_called_once_with("Add exported StrictDoc files", author=Actor(name="StrictDoc Exporter", email="polarion-opensource@sbb.ch"))
 
 
 def test_commit_to_github_clone_failure_raises_runtime_error() -> None:
@@ -697,8 +698,7 @@ async def test_commit_to_github_push_failure_raises_runtime_error() -> None:
                 await commit_to_github(output_dir, params, "exported-docs")
 
 
-@pytest.mark.asyncio
-async def test_commit_to_github_skips_cache_directory() -> None:
+def test_commit_to_github_skips_cache_directory() -> None:
     """The _cache directory in output_dir must not be copied to the repo."""
     from app.strictdoc_controller import commit_to_github
 
@@ -730,7 +730,7 @@ async def test_commit_to_github_skips_cache_directory() -> None:
             patch("app.strictdoc_controller.update_repo_index_file"),
             patch("shutil.copy2", side_effect=track_copy),
         ):
-            await commit_to_github(output_dir, params, "exported-docs")
+            commit_to_github(output_dir, params, "exported-docs")
 
         assert not any("_cache" in item for item in copied_items)
 
