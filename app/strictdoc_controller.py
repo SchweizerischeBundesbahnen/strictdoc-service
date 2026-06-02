@@ -20,6 +20,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse
 from git import Repo
+from git.util import Actor
 from pathvalidate import sanitize_filename
 from prometheus_fastapi_instrumentator import Instrumentator
 from pydantic import BaseModel, Field
@@ -351,7 +352,7 @@ def remove_target_folder(target_folder: Path) -> None:
         raise RuntimeError(f"Failed to remove existing folder in repo: {e!s}") from e
 
 
-async def commit_to_github(output_dir: Path, github_params: GitHubExportParams, sanitized_folder_name: str) -> None:
+def commit_to_github(output_dir: Path, github_params: GitHubExportParams, sanitized_folder_name: str) -> None:
     """Commit exported files to GitHub repository."""
     with tempfile.TemporaryDirectory() as base_dir:
         token = github_params.access_token
@@ -361,7 +362,7 @@ async def commit_to_github(output_dir: Path, github_params: GitHubExportParams, 
             repo_url = f"https://{token}@github.com/{github_params.owner}/{github_params.repo}.git" if token else clean_repo_url
             repo = Repo.clone_from(repo_url, base_dir, depth=1)
         except Exception as e:
-            logger.exception("Failed to clone repository: %s", sanitize_for_logging(remove_token_for_logging(str(e), token, repo_url, clean_repo_url)), exc_info=False)
+            logger.error("Failed to clone repository: %s", sanitize_for_logging(remove_token_for_logging(str(e), token, repo_url, clean_repo_url)))
             raise RuntimeError("Failed to clone repository") from None
 
         if repo.working_tree_dir is None:
@@ -386,13 +387,13 @@ async def commit_to_github(output_dir: Path, github_params: GitHubExportParams, 
         try:
             repo.git.add(A=True)
             commit_message = github_params.commit_message or "Add exported StrictDoc files"
-            repo.index.commit(commit_message)
+            repo.index.commit(commit_message, author=Actor(name="StrictDoc Exporter", email="polarion-opensource@sbb.ch"))
             origin = repo.remote(name="origin")
             origin = origin.set_url(repo_url)
             origin.push()
             logger.info("Committed and pushed changes to origin: %s", sanitize_for_logging(clean_repo_url))
         except Exception as e:
-            logger.exception("Failed to commit or push changes: %s", sanitize_for_logging(remove_token_for_logging(str(e), token, repo_url, clean_repo_url)), exc_info=False)
+            logger.error("Failed to commit or push changes: %s", sanitize_for_logging(remove_token_for_logging(str(e), token, repo_url, clean_repo_url)))
             raise RuntimeError("Failed to commit or push to repository") from None
 
 
@@ -562,10 +563,10 @@ async def _export_documents(export_params: StrictdocExportParams, sanitized_file
 
 
 @overload
-async def _export_documents(export_params: GitHubExportParams, sanitized_file_name: str, callback: Callable[[Path, GitHubExportParams, str], Awaitable[None]]) -> FileResponse: ...
+async def _export_documents(export_params: GitHubExportParams, sanitized_file_name: str, callback: Callable[[Path, GitHubExportParams, str], None]) -> FileResponse: ...
 
 
-async def _export_documents(export_params: StrictdocExportParams | GitHubExportParams, sanitized_file_name: str, callback: Callable[[Path, GitHubExportParams, str], Awaitable[None]] | None = None) -> FileResponse:
+async def _export_documents(export_params: StrictdocExportParams | GitHubExportParams, sanitized_file_name: str, callback: Callable[[Path, GitHubExportParams, str], None] | None = None) -> FileResponse:
     metrics = get_strictdoc_metrics()
     start_time = time.perf_counter()
     metrics.record_export_start()
@@ -596,7 +597,7 @@ async def _export_documents(export_params: StrictdocExportParams | GitHubExportP
                 shutil.rmtree(cache_path)
 
             if callback is not None and isinstance(export_params, GitHubExportParams):
-                await callback(output_dir, export_params, sanitized_file_name)
+                await asyncio.to_thread(callback, output_dir, export_params, sanitized_file_name)
 
             response = _build_single_file_response(output_dir, export_format, sanitized_file_name) if len(export_params.content) == 1 else _build_bulk_zip_response(temp_dir_path, output_dir, export_format, sanitized_file_name)
             export_completed = True
@@ -671,6 +672,9 @@ async def export_documents_github(export_params: GitHubExportParams) -> FileResp
     )
 
     sanitized_folder_name = sanitize_filename(folder_name, replacement_text="_")
+    if sanitized_folder_name == "":
+        raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail="Invalid folder name supplied")
+
     if sanitized_folder_name != folder_name:
         logger.warning("Sanitized filename from %r to %r", sanitize_for_logging(folder_name), sanitize_for_logging(sanitized_folder_name))
 
