@@ -598,8 +598,7 @@ def _make_github_params(**overrides: object):  # type: ignore[return]
     return GitHubExportParams(**defaults)  # type: ignore[arg-type]
 
 
-@pytest.mark.asyncio
-async def test_commit_to_github_successful_with_token() -> None:
+def test_commit_to_github_successful_with_token() -> None:
     """commit_to_github should clone, copy files, update index, and push."""
     from app.strictdoc_controller import commit_to_github
 
@@ -621,15 +620,14 @@ async def test_commit_to_github_successful_with_token() -> None:
             patch("app.strictdoc_controller.Repo.clone_from", return_value=mock_repo),
             patch("app.strictdoc_controller.update_repo_index_file"),
         ):
-            await commit_to_github(output_dir, params, "exported-docs")
+            commit_to_github(output_dir, params, "exported-docs")
 
         mock_repo.git.add.assert_called_once_with(A=True)
         mock_repo.index.commit.assert_called_once_with("Test commit")
         mock_origin.push.assert_called_once()
 
 
-@pytest.mark.asyncio
-async def test_commit_to_github_uses_default_commit_message() -> None:
+def test_commit_to_github_uses_default_commit_message() -> None:
     """When commit_message is None the default message should be used."""
     from app.strictdoc_controller import commit_to_github
 
@@ -650,13 +648,12 @@ async def test_commit_to_github_uses_default_commit_message() -> None:
             patch("app.strictdoc_controller.update_repo_index_file"),
             patch("app.strictdoc_controller.remove_target_folder"),
         ):
-            await commit_to_github(output_dir, params, "exported-docs")
+            commit_to_github(output_dir, params, "exported-docs")
 
         mock_repo.index.commit.assert_called_once_with("Add exported StrictDoc files")
 
 
-@pytest.mark.asyncio
-async def test_commit_to_github_clone_failure_raises_runtime_error() -> None:
+def test_commit_to_github_clone_failure_raises_runtime_error() -> None:
     """GitCommandError during clone should be re-raised as RuntimeError."""
     from app.strictdoc_controller import commit_to_github
     from git import GitCommandError
@@ -669,7 +666,7 @@ async def test_commit_to_github_clone_failure_raises_runtime_error() -> None:
 
         with patch("app.strictdoc_controller.Repo.clone_from", side_effect=GitCommandError("clone", "failed")):
             with pytest.raises(RuntimeError, match="Failed to clone repository"):
-                await commit_to_github(output_dir, params, "exported-docs")
+                commit_to_github(output_dir, params, "exported-docs")
 
 
 @pytest.mark.asyncio
