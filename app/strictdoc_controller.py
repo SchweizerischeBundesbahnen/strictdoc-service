@@ -370,7 +370,7 @@ async def export_with_action(input_file: Path, output_dir: Path, format_name: st
         cmd = ["strictdoc", "export", "--formats", format_name, "--output-dir", str(output_dir), str(input_file)]
         await run_strictdoc_command(cmd)
     except Exception as e:
-        logger.exception("Export failed: %s", str(e))
+        logger.error("Export failed: %s", sanitize_for_logging(str(e)))
         raise RuntimeError(f"Export failed: {e!s}") from e
 
 
@@ -402,7 +402,7 @@ async def export_to_format(input_file: Path, output_dir: Path, export_format: st
         # Call export_with_action for the actual export
         await export_with_action(input_file, output_dir, export_format)
     except Exception as e:
-        logger.exception("Export failed: %s", str(e))
+        logger.error("Export failed: %s", sanitize_for_logging(str(e)))
         raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail=f"Export to {export_format} failed: {e!s}") from e
 
     # For HTML, we need to zip the output directory
@@ -560,7 +560,7 @@ async def export_document(
                     if persistent_temp_file.exists():
                         persistent_temp_file.unlink()
                 except Exception as e:
-                    logger.exception("Failed to clean up temporary file: %s", str(e))
+                    logger.error("Failed to clean up temporary file: %s", sanitize_for_logging(str(e)))
 
             # Record successful export metrics
             duration_ms = (time.perf_counter() - start_time) * 1000
