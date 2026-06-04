@@ -343,7 +343,7 @@ async def run_strictdoc_command(cmd: list[str]) -> None:
             stderr_text = stderr.decode("utf-8") if stderr else ""
             error_output = (stderr_text + "\n" + stdout_text).strip() or "Unknown error"
             logger.error("StrictDoc CLI error (returncode=%d): %s", process.returncode, sanitize_for_logging(error_output))
-            raise RuntimeError(f"StrictDoc command failed: {error_output}")
+            raise RuntimeError(f"StrictDoc command failed: {sanitize_for_logging(error_output)}")
 
         if stderr:
             stderr_text = stderr.decode("utf-8")
