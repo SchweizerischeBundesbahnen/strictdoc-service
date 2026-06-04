@@ -315,7 +315,9 @@ def process_sdoc_content(content: str, input_file: Path) -> None:
             else:
                 error_msg = "Syntax error in SDOC document. Please check your document structure."
 
-        logger.exception("SDOC parsing error: %s", error_msg)
+        # Sanitize once for both the log sink and the client-facing error detail
+        error_msg = sanitize_for_logging(error_msg)
+        logger.error("SDOC parsing error: %s", error_msg)
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=error_msg) from e
 
 
