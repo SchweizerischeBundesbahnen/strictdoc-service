@@ -317,7 +317,10 @@ def process_sdoc_content(content: str, input_file: Path) -> None:
 
         # Sanitize once for both the log sink and the client-facing error detail
         error_msg = sanitize_for_logging(error_msg)
-        logger.error("SDOC parsing error: %s", error_msg)
+        # Deliberately logger.error, not logger.exception: the original parser exception's
+        # traceback would render the raw (unsanitized) document content, reintroducing the
+        # CWE-117 log injection that the error_msg sanitization above closes.
+        logger.error("SDOC parsing error: %s", error_msg)  # NOSONAR S8572
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=error_msg) from e
 
 
@@ -352,7 +355,7 @@ async def run_strictdoc_command(cmd: list[str]) -> None:
             logger.warning("StrictDoc CLI warnings: %s", sanitize_for_logging(stderr_text))
 
     except Exception as e:
-        logger.error("Command execution failed: %s", sanitize_for_logging(str(e)))
+        logger.exception("Command execution failed: %s", str(e))
         raise RuntimeError(f"Command execution failed: {e!s}") from e
 
 
@@ -372,7 +375,7 @@ async def export_with_action(input_file: Path, output_dir: Path, format_name: st
         cmd = ["strictdoc", "export", "--formats", format_name, "--output-dir", str(output_dir), str(input_file)]
         await run_strictdoc_command(cmd)
     except Exception as e:
-        logger.error("Export failed: %s", sanitize_for_logging(str(e)))
+        logger.exception("Export failed: %s", str(e))
         raise RuntimeError(f"Export failed: {e!s}") from e
 
 
@@ -404,7 +407,7 @@ async def export_to_format(input_file: Path, output_dir: Path, export_format: st
         # Call export_with_action for the actual export
         await export_with_action(input_file, output_dir, export_format)
     except Exception as e:
-        logger.error("Export failed: %s", sanitize_for_logging(str(e)))
+        logger.exception("Export failed: %s", str(e))
         raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail=f"Export to {export_format} failed: {e!s}") from e
 
     # For HTML, we need to zip the output directory
@@ -562,7 +565,7 @@ async def export_document(
                     if persistent_temp_file.exists():
                         persistent_temp_file.unlink()
                 except Exception as e:
-                    logger.error("Failed to clean up temporary file: %s", sanitize_for_logging(str(e)))
+                    logger.exception("Failed to clean up temporary file: %s", str(e))
 
             # Record successful export metrics
             duration_ms = (time.perf_counter() - start_time) * 1000
