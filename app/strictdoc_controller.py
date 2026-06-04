@@ -350,7 +350,7 @@ async def run_strictdoc_command(cmd: list[str]) -> None:
             logger.warning("StrictDoc CLI warnings: %s", sanitize_for_logging(stderr_text))
 
     except Exception as e:
-        logger.exception("Command execution failed: %s", str(e))
+        logger.error("Command execution failed: %s", sanitize_for_logging(str(e)))
         raise RuntimeError(f"Command execution failed: {e!s}") from e
 
 
