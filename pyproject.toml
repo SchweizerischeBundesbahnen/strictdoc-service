@@ -9,9 +9,9 @@ license = "Apache-2.0"
 readme = "README.md"
 requires-python = ">=3.14,<3.15"
 dependencies = [
-    "strictdoc==0.22.0",
+    "strictdoc==0.23.0",
     "fastapi==0.136.3",
-    "uvicorn==0.48.0",
+    "uvicorn==0.49.0",
     "pathvalidate==3.3.1",
     "prometheus-client==0.25.0",
     "prometheus-fastapi-instrumentator==8.0.0",
@@ -26,11 +26,11 @@ Repository = "https://github.com/SchweizerischeBundesbahnen/strictdoc-service"
 [dependency-groups]
 dev = [
     "pre-commit==4.6.0",
-    "ruff==0.15.15",
+    "ruff==0.15.16",
     "mypy==2.1.0",
 ]
 test = [
-    "tox==4.55.0",
+    "tox==4.55.1",
     "tox-uv==1.35.2",
     # for debug source code for pytest --> see tox.ini section [testenv]
     "docker==7.1.0",
