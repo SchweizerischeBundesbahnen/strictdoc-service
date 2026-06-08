@@ -39,6 +39,7 @@ def test_main_runs(monkeypatch: pytest.MonkeyPatch) -> None:
         def parse_args(self) -> Namespace:
             class Args:
                 port = DEFAULT_PORT
+                host = "0.0.0.0"
                 log_level = "DEBUG"
 
             return Args()
@@ -46,10 +47,11 @@ def test_main_runs(monkeypatch: pytest.MonkeyPatch) -> None:
     # Mock uvicorn.run
     server_started = False
 
-    def mock_start_server(port: int) -> None:
+    def mock_start_server(host: str, port: int) -> None:
         nonlocal server_started
         server_started = True
         assert port == DEFAULT_PORT
+        assert host == "0.0.0.0"
 
     monkeypatch.setattr("argparse.ArgumentParser", MockArgumentParser)
     monkeypatch.setattr("app.strictdoc_service_application.start_server", mock_start_server)
@@ -133,12 +135,12 @@ def test_start_service(monkeypatch: pytest.MonkeyPatch) -> None:
         nonlocal server_started
         server_started = True
         assert port == DEFAULT_PORT
-        assert host in ("127.0.0.1", "localhost")
+        assert host == "0.0.0.0"
         assert log_level == "info"
 
     monkeypatch.setattr("uvicorn.run", mock_uvicorn_run)
 
     from app.strictdoc_service_application import start_service
 
-    start_service(DEFAULT_PORT)
+    start_service("0.0.0.0", DEFAULT_PORT)
     assert server_started
