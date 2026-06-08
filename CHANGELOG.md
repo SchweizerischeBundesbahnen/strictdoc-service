@@ -1,5 +1,40 @@
 # Changelog
 
+## [0.15.0](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/compare/v0.14.0...v0.15.0) (2026-06-08)
+
+
+### Features
+
+* **deps:** update dependency strictdoc to v0.19.0 ([8f372ed](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/8f372ede94ce4d8cbe6dd976fba697556b8aabcb))
+* **deps:** update dependency strictdoc to v0.20.0 ([57ff841](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/57ff841239e686c3c836b51b7f56d7ca856af24f))
+* **deps:** update dependency strictdoc to v0.21.0 ([7345bfa](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/7345bfa2477d915161e218586ff916e55c1275f1))
+* **deps:** update dependency strictdoc to v0.22.0 ([a9acab4](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/a9acab411ab4b0a620c275247bf09f15817c040e))
+* **deps:** update dependency strictdoc to v0.23.0 ([854260a](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/854260aa52e9380139536c8c6b9ff89b8dee6847))
+
+
+### Bug Fixes
+
+* **deps:** update dependency fastapi to v0.135.2 ([4cc99e0](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/4cc99e0ded12b9db722e2040d9e996b415f91400))
+* **deps:** update dependency fastapi to v0.135.3 ([5cd4b83](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/5cd4b83d0a79323668fffa447c39c3c65ee984c5))
+* **deps:** update dependency fastapi to v0.136.0 ([007ca0c](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/007ca0c64c2289ca95fca5f63f1dba2b8de6ba80))
+* **deps:** update dependency fastapi to v0.136.1 ([1af9816](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/1af981651197554ff881b01c86956baa9e0772f1))
+* **deps:** update dependency fastapi to v0.136.3 ([5372f22](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/5372f223672274ac5949d32bd9dffd531ccc7dcf))
+* **deps:** update dependency prometheus-client to v0.24.1 ([48f041f](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/48f041fcad64f310c1ea0ca46bdf5a163a3c52c0))
+* **deps:** update dependency prometheus-client to v0.25.0 ([0b86c85](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/0b86c85bb07c41f6e42f2a5a9e874e686e2ee0ec))
+* **deps:** update dependency prometheus-fastapi-instrumentator to v8 ([#104](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/issues/104)) ([1b3a8d8](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/1b3a8d808e1dc98852836a36a51fa8a2b5d2d377))
+* **deps:** update dependency strictdoc to v0.21.1 ([360c909](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/360c90953e1cb1ffdaa0db4a60bbc5ca3b8e27f9))
+* **deps:** update dependency strictdoc to v0.23.1 ([d648710](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/d648710d512386f014db8233978284cad8b2bc50))
+* **deps:** update dependency urllib3 to v2.7.0 ([daed977](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/daed977eabdcc180ae85de0b4d7bd18c8d034ac4))
+* **deps:** update dependency uvicorn to v0.42.0 ([6ea2fdc](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/6ea2fdc6f60978654ee46dc6aab9152d0f4d4a13))
+* **deps:** update dependency uvicorn to v0.43.0 ([2c9c207](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/2c9c207ba04fefa088b67ba094f1a84cf978e8c7))
+* **deps:** update dependency uvicorn to v0.44.0 ([8c4eaac](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/8c4eaac9c4af5954a546eb503385dc28cf66ba02))
+* **deps:** update dependency uvicorn to v0.46.0 ([be08e3e](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/be08e3ecdff913b00139017b4d39497a97d01be6))
+* **deps:** update dependency uvicorn to v0.47.0 ([3ea7fc5](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/3ea7fc5545786ffe6dba10ec0929453c0dfc4e67))
+* **deps:** update dependency uvicorn to v0.48.0 ([4cf644b](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/4cf644bf87f92ccbac44f8889ddd513d9262980b))
+* **deps:** update dependency uvicorn to v0.49.0 ([112a57d](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/112a57d3c5be3e4e665304fdcca6768ab73be6c0))
+* **security:** sanitize StrictDoc subprocess output before logging ([#105](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/issues/105)) ([3bc7f56](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/3bc7f5691ec388e006430e355676e34c4f5869aa))
+* use named logger instead of root logger ([#96](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/issues/96)) ([4d2c78e](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/4d2c78eb49f5e5e58ce3a8f32864bbeaa3073299))
+
 ## 0.14.0 (2026-03-10)
 
 
