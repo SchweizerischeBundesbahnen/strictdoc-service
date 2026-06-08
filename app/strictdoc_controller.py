@@ -315,7 +315,12 @@ def process_sdoc_content(content: str, input_file: Path) -> None:
             else:
                 error_msg = "Syntax error in SDOC document. Please check your document structure."
 
-        logger.exception("SDOC parsing error: %s", error_msg)
+        # Sanitize once for both the log sink and the client-facing error detail
+        error_msg = sanitize_for_logging(error_msg)
+        # Deliberately logger.error, not logger.exception: the original parser exception's
+        # traceback would render the raw (unsanitized) document content, reintroducing the
+        # CWE-117 log injection that the error_msg sanitization above closes.
+        logger.error("SDOC parsing error: %s", error_msg)  # NOSONAR S8572
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=error_msg) from e
 
 
@@ -342,12 +347,12 @@ async def run_strictdoc_command(cmd: list[str]) -> None:
             stdout_text = stdout.decode("utf-8") if stdout else ""
             stderr_text = stderr.decode("utf-8") if stderr else ""
             error_output = (stderr_text + "\n" + stdout_text).strip() or "Unknown error"
-            logger.error("StrictDoc CLI error (returncode=%d): %s", process.returncode, error_output)
-            raise RuntimeError(f"StrictDoc command failed: {error_output}")
+            logger.error("StrictDoc CLI error (returncode=%d): %s", process.returncode, sanitize_for_logging(error_output))
+            raise RuntimeError(f"StrictDoc command failed: {sanitize_for_logging(error_output)}")
 
         if stderr:
             stderr_text = stderr.decode("utf-8")
-            logger.warning("StrictDoc CLI warnings: %s", stderr_text)
+            logger.warning("StrictDoc CLI warnings: %s", sanitize_for_logging(stderr_text))
 
     except Exception as e:
         logger.exception("Command execution failed: %s", str(e))
