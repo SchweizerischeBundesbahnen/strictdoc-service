@@ -45,10 +45,3 @@ def normalize_line_endings(content: str) -> str:
         str: Content with all line endings normalized to `\n`.
     """
     return content.replace("\r\n", "\n").replace("\r", "\n")
-
-
-def remove_token_for_logging(msg: str, token: str | None, repo_url: str, clean_repo_url: str) -> str:
-    str1 = msg.replace(repo_url, clean_repo_url)
-    if token is None:
-        return str1
-    return str1.replace(token, "TOKEN")

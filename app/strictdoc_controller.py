@@ -286,21 +286,6 @@ async def export_bulk_to_format(input_dir: Path, output_dir: Path, export_format
         raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail=f"Export to {export_format} failed: {e!s}") from e
 
 
-def remove_target_folder(target_folder: Path) -> None:
-    if not target_folder.exists():
-        target_folder.mkdir()
-        return
-    try:
-        if target_folder.is_file():
-            target_folder.unlink()
-        else:
-            shutil.rmtree(target_folder)
-            target_folder.mkdir()
-    except Exception as e:
-        logger.exception("Failed to remove existing folder in repo: %s", str(e))
-        raise RuntimeError(f"Failed to remove existing folder in repo: {e!s}") from e
-
-
 def find_exported_file(output_dir: Path, export_format: str, extension: str) -> Path:
     """Find the exported file in the output directory.
 
@@ -459,9 +444,11 @@ async def _export_documents(export_params: StrictdocExportParams, sanitized_file
             input_dir.mkdir()
             output_dir.mkdir()
 
+            doc_contents = sanitize_sdoc_content_filenames(export_params.content)
+
             # Write all documents to input directory
-            for doc_name, doc_content in export_params.content.items():
-                input_file = input_dir / sanitize_filename(doc_name, replacement_text="_")
+            for doc_name, doc_content in doc_contents.items():
+                input_file = input_dir / doc_name
                 with input_file.open("w", encoding="utf-8") as f:
                     f.write(doc_content)
                 logger.info("Saved SDOC content to %s", input_file)
@@ -486,7 +473,7 @@ async def _export_documents(export_params: StrictdocExportParams, sanitized_file
         if not export_completed:
             metrics.record_export_failure()
             increment_export_failure(export_format)
-            logger.warning("Export cancelled (client disconnect or timeout)")
+            logger.warning("Export incomplete (client disconnect or timeout)")
         else:
             duration_ms = (time.perf_counter() - start_time) * 1000
             metrics.record_export_success(duration_ms)
@@ -559,6 +546,13 @@ def validate_export_paths(persistent_temp_file: Path, temp_dir_resolved: Path, e
     if not export_file_resolved.is_relative_to(output_dir_resolved):
         logger.warning("Invalid export path detected: %s not in %s", safe_export_file_resolved, safe_output_dir_resolved)
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail="Invalid export file path detected.")
+
+
+def sanitize_sdoc_content_filenames(sdoc_contents: dict[str, str]) -> dict[str, str]:
+    contents = {sanitize_filename(doc_name, replacement_text="_"): content for doc_name, content in sdoc_contents.items()}
+    if len(contents) != len(sdoc_contents):
+        raise HTTPException(status_code=400, detail="Multi-export filename collision")
+    return contents
 
 
 def start_server(host: str, port: int) -> None:
