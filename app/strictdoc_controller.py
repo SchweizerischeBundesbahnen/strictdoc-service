@@ -410,6 +410,8 @@ def _build_bulk_zip_response(
 
 def check_sdoc_content(content: dict[str, str], export_format: str, metrics: StrictDocMetrics) -> None:
     """Basic checks for sdoc content. Raises HTTPException if failed."""
+    if len(content) == 0:
+        raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail="Empty content body")
     for doc_name, doc_content in content.items():
         if not doc_content or "[DOCUMENT]" not in doc_content:
             metrics.record_export_failure()
@@ -433,6 +435,8 @@ async def _export_documents(export_params: StrictdocExportParams, sanitized_file
     metrics.record_export_start()
     export_completed = False
     export_format = (export_params.format if isinstance(export_params, StrictdocExportParams) else "html").lower()
+    if export_format not in EXPORT_FORMATS:
+        raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail="Invalid export format")
     # Validate all SDOC content entries
     check_sdoc_content(export_params.content, export_format, metrics)
 
@@ -467,7 +471,7 @@ async def _export_documents(export_params: StrictdocExportParams, sanitized_file
         raise
     except Exception as e:
         logger.exception("Export failed: %s", str(e))
-        raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail=f"Export failed: {e!s}") from e
+        raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=f"Export failed: {e!s}") from e
     finally:
         # Ensure metrics are recorded even on asyncio.CancelledError (which is a BaseException)
         if not export_completed:
