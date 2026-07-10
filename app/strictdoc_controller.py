@@ -551,7 +551,7 @@ def validate_export_paths(persistent_temp_file: Path, temp_dir_resolved: Path, e
 def sanitize_sdoc_content_filenames(sdoc_contents: dict[str, str]) -> dict[str, str]:
     contents = {sanitize_filename(doc_name, replacement_text="_"): content for doc_name, content in sdoc_contents.items()}
     if len(contents) != len(sdoc_contents):
-        raise HTTPException(status_code=400, detail="Multi-export filename collision")
+        raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail="Multi-export filename collision")
     return contents
 
 
