@@ -11,6 +11,3 @@ LOG_LEVEL_LOWER=$(echo "$LOG_LEVEL" | tr '[:upper:]' '[:lower:]')
 
 # Execute the service application with uvicorn for FastAPI
 exec uvicorn app.strictdoc_controller:app --host 0.0.0.0 --port $PORT --log-level $LOG_LEVEL_LOWER
-
-# If ENABLE_GITHUB_EXPORT is true, add ssl certificate and key:
-# exec uvicorn app.strictdoc_controller:app --host 0.0.0.0 --port $PORT --log-level $LOG_LEVEL_LOWER --ssl-keyfile key.pem --ssl-certfile cert.pem

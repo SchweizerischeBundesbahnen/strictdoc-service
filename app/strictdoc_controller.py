@@ -1,7 +1,6 @@
 """StrictDoc service controller module."""
 
 import asyncio
-import html
 import logging
 import os
 import platform
@@ -13,14 +12,12 @@ from collections.abc import Awaitable, Callable
 from contextlib import asynccontextmanager
 from http import HTTPStatus
 from pathlib import Path
-from typing import TYPE_CHECKING, overload
+from typing import TYPE_CHECKING
 
 import uvicorn
 from fastapi import FastAPI, HTTPException
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse
-from git import Repo
-from git.util import Actor
 from pathvalidate import sanitize_filename
 from prometheus_fastapi_instrumentator import Instrumentator
 from pydantic import BaseModel, Field
@@ -32,7 +29,7 @@ from strictdoc import __version__ as strictdoc_version  # type: ignore[import]
 from app.constants import EXPORT_FORMATS
 from app.metrics_server import METRICS_SERVER_ENABLED, MetricsServer
 from app.prometheus_metrics import increment_export_failure, increment_export_success, observe_export_duration
-from app.sanitization import remove_token_for_logging, sanitize_for_logging
+from app.sanitization import sanitize_for_logging
 from app.strictdoc_metrics import get_strictdoc_metrics
 
 if TYPE_CHECKING:
@@ -90,33 +87,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
             await _metrics_server.stop()
         logger.info("Application shutdown complete")
 
-
-# Repo folder configs
-INDEX_FOLDER_TEMPLATE = """
-<div class="project_tree-folder-content">
-    <a class="project_tree-file" data-turbo="false" href="{{PROJECT}}/html/index.html"
-        data-testid="tree-file-link" target="_blank">
-        <div class="project_tree-file-icon">
-            <svg class="svg_icon" width="16" height="16" viewBox="0 0 16 16" version="1.1"
-                xmlns="http://www.w3.org/2000/svg">
-                <path
-                    d=" M13,13 L13,8 C13,7.5 12.6,7 12,7 L9,7 C8.5,7 8,6.5 8,6 L8,3 C8,2.5 7.5,2 7,2 L4,2 C3.5,2 3,\
-2.5 3,3 L3,13 C3,13.5 3.5,14 4,14 L12,14 C12.6,14 13,13.5 13,13 Z M13,9 L13,8 C13,7.5 13,7 12.5,6.5 L8.5,2.5 C8,2 7.5,2 7,2 L6,2">
-                </path>
-            </svg>
-        </div>
-        <div class="project_tree-file-details">
-            <div class="project_tree-file-title">
-                {{PROJECT}}
-            </div>
-            <div class="project_tree-file-name">
-                index.html
-            </div>
-        </div>
-    </a>
-</div>
-"""
-INDEX_NEW_FOLDER_LINE = "<!-- Add more project entries here -->"
 
 app = FastAPI(
     title="StrictDoc Service API",
@@ -198,17 +168,6 @@ class ErrorResponse(BaseModel):
     details: str | None = Field(description="Error details", default=None)
 
 
-class GitHubExportParams(BaseModel):
-    """GitHub export params model"""
-
-    content: dict[str, str] = Field(description="StrictDoc Content of the form {key.sdoc: content}")
-    folder_name: str = Field(description="Newly created folder to export the html content into")
-    owner: str = Field(description="Repository owner", pattern=r"^[A-Za-z0-9\._-]+$")
-    repo: str = Field(description="Repository name", pattern=r"^[A-Za-z0-9\._-]+$")
-    access_token: str | None = Field(description="Access token for the repository", default=None)
-    commit_message: str | None = Field(description="Commit message", default=None)
-
-
 class StrictdocExportParams(BaseModel):
     """Strictdoc export model"""
 
@@ -234,16 +193,6 @@ async def log_requests(request: Request, call_next: Callable[[Request], Awaitabl
     response = await call_next(request)
     logger.info("Response: %s %s, Status: %s", request.method, request.url.path, response.status_code)
     return response
-
-
-@app.middleware("http")
-async def check_feature_flags(request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
-    """Check for ENABLE_GITHUB_EXPORT
-    Return NotFound if set to false
-    """
-    if request.url.path == "/export-github" and os.getenv("ENABLE_GITHUB_EXPORT", "false").lower() == "false":
-        return JSONResponse(status_code=HTTPStatus.NOT_FOUND, content={"detail": "Endpoint not enabled"})
-    return await call_next(request)
 
 
 @app.get("/version")
@@ -350,71 +299,6 @@ def remove_target_folder(target_folder: Path) -> None:
     except Exception as e:
         logger.exception("Failed to remove existing folder in repo: %s", str(e))
         raise RuntimeError(f"Failed to remove existing folder in repo: {e!s}") from e
-
-
-def commit_to_github(output_dir: Path, github_params: GitHubExportParams, sanitized_folder_name: str) -> None:
-    """Commit exported files to GitHub repository."""
-    with tempfile.TemporaryDirectory() as base_dir:
-        token = github_params.access_token
-        # Clone the repository
-        try:
-            clean_repo_url = f"https://github.com/{github_params.owner}/{github_params.repo}.git"
-            repo_url = f"https://{token}@github.com/{github_params.owner}/{github_params.repo}.git" if token else clean_repo_url
-            repo = Repo.clone_from(repo_url, base_dir, depth=1)
-        except Exception as e:
-            logger.error("Failed to clone repository: %s", sanitize_for_logging(remove_token_for_logging(str(e), token, repo_url, clean_repo_url)))
-            raise RuntimeError("Failed to clone repository") from None
-
-        if repo.working_tree_dir is None:
-            raise RuntimeError("Repo working dir could not be established")
-
-        # If folder_name already exists in repo, remove it before copying new files
-        target_folder = Path(repo.working_tree_dir) / sanitized_folder_name
-        remove_target_folder(target_folder)
-
-        # Copy files from output_dir to repo working tree
-        for item in output_dir.iterdir():
-            if item.name == "_cache":
-                continue
-            if item.is_file():
-                shutil.copy2(item, Path(repo.working_tree_dir) / sanitized_folder_name / item.name)
-            elif item.is_dir():
-                shutil.copytree(item, Path(repo.working_tree_dir) / sanitized_folder_name / item.name, dirs_exist_ok=True, ignore=shutil.ignore_patterns("_cache"))
-
-        update_repo_index_file(Path(repo.working_tree_dir), sanitized_folder_name)
-
-        # Add changes and commit
-        try:
-            repo.git.add(A=True)
-            commit_message = github_params.commit_message or "Add exported StrictDoc files"
-            repo.index.commit(commit_message, author=Actor(name="StrictDoc Exporter", email="polarion-opensource@sbb.ch"))
-            origin = repo.remote(name="origin")
-            origin = origin.set_url(repo_url)
-            origin.push()
-            logger.info("Committed and pushed changes to origin: %s", sanitize_for_logging(clean_repo_url))
-        except Exception as e:
-            logger.error("Failed to commit or push changes: %s", sanitize_for_logging(remove_token_for_logging(str(e), token, repo_url, clean_repo_url)))
-            raise RuntimeError("Failed to commit or push to repository") from None
-
-
-def update_repo_index_file(repo_dir: Path, folder_name: str) -> None:
-    """Update the root index file in the repository to include a link to the new project folder
-
-    Index file must already be set up before using this service to commit to github
-    """
-    repo_dir_resolved = repo_dir.resolve()
-    index_file = (repo_dir / "index.html").resolve()
-    if not index_file.is_relative_to(repo_dir_resolved):
-        raise RuntimeError("Index file path is outside the repository directory")
-    try:
-        content = index_file.read_text(encoding="utf-8")
-        new_entry = INDEX_FOLDER_TEMPLATE.replace("{{PROJECT}}", html.escape(folder_name))
-        if new_entry not in content:
-            content = content.replace(INDEX_NEW_FOLDER_LINE, new_entry + f"\n{INDEX_NEW_FOLDER_LINE}")
-            index_file.write_text(content, encoding="utf-8")
-    except Exception as e:
-        logger.exception("Failed to update index file: %s", str(e))
-        raise RuntimeError(f"Failed to update index file: {e!s}") from e
 
 
 def find_exported_file(output_dir: Path, export_format: str, extension: str) -> Path:
@@ -558,15 +442,7 @@ def check_sdoc_content(content: dict[str, str], export_format: str, metrics: Str
             )
 
 
-@overload
-async def _export_documents(export_params: StrictdocExportParams, sanitized_file_name: str) -> FileResponse: ...
-
-
-@overload
-async def _export_documents(export_params: GitHubExportParams, sanitized_file_name: str, callback: Callable[[Path, GitHubExportParams, str], None]) -> FileResponse: ...
-
-
-async def _export_documents(export_params: StrictdocExportParams | GitHubExportParams, sanitized_file_name: str, callback: Callable[[Path, GitHubExportParams, str], None] | None = None) -> FileResponse:
+async def _export_documents(export_params: StrictdocExportParams, sanitized_file_name: str) -> FileResponse:
     metrics = get_strictdoc_metrics()
     start_time = time.perf_counter()
     metrics.record_export_start()
@@ -595,9 +471,6 @@ async def _export_documents(export_params: StrictdocExportParams | GitHubExportP
             await export_bulk_to_format(input_dir, output_dir, export_format)
             if (cache_path := (output_dir / "_cache")).exists():
                 shutil.rmtree(cache_path)
-
-            if callback is not None and isinstance(export_params, GitHubExportParams):
-                await asyncio.to_thread(callback, output_dir, export_params, sanitized_file_name)
 
             response = _build_single_file_response(output_dir, export_format, sanitized_file_name) if len(export_params.content) == 1 else _build_bulk_zip_response(temp_dir_path, output_dir, export_format, sanitized_file_name)
             export_completed = True
@@ -649,36 +522,6 @@ async def export_documents(export_params: StrictdocExportParams) -> FileResponse
         logger.warning("Sanitized filename from %r to %r", sanitize_for_logging(file_name), sanitize_for_logging(sanitized_file_name))
 
     return await _export_documents(export_params, sanitized_file_name)
-
-
-@app.post("/export-github", response_class=FileResponse)
-async def export_documents_github(export_params: GitHubExportParams) -> FileResponse:
-    """Export one or more StrictDoc documents to the request GitHub repo.
-    When a single document is provided, returns the file in the requested format.
-    When multiple documents are provided, returns a ZIP archive containing all exported files.
-
-    Args:
-        export_params: Export parameters including content dict and github params.
-
-    Returns:
-        FileResponse: The exported ZIP archive.
-    """
-    folder_name = export_params.folder_name
-
-    logger.info(
-        "GitHub Export requested: folder=%r, documents=%d",
-        sanitize_for_logging(folder_name),
-        len(export_params.content),
-    )
-
-    sanitized_folder_name = sanitize_filename(folder_name, replacement_text="_")
-    if sanitized_folder_name == "":
-        raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail="Invalid folder name supplied")
-
-    if sanitized_folder_name != folder_name:
-        logger.warning("Sanitized filename from %r to %r", sanitize_for_logging(folder_name), sanitize_for_logging(sanitized_folder_name))
-
-    return await _export_documents(export_params, sanitized_folder_name, commit_to_github)
 
 
 def validate_export_paths(persistent_temp_file: Path, temp_dir_resolved: Path, export_file: Path, output_dir: Path) -> None:
