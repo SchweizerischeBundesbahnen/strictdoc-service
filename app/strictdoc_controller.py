@@ -435,12 +435,14 @@ async def _export_documents(export_params: StrictdocExportParams, sanitized_file
     export_completed = False
     metrics.record_export_start()
 
+    export_format = (export_params.format if isinstance(export_params, StrictdocExportParams) else "html").lower()
+    if export_format not in EXPORT_FORMATS:
+        metrics.record_export_failure()
+        increment_export_failure(export_format)
+        raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail="Invalid export format")
+    # Validate all SDOC content entries
+    check_sdoc_content(export_params.content, export_format, metrics)
     try:
-        export_format = (export_params.format if isinstance(export_params, StrictdocExportParams) else "html").lower()
-        if export_format not in EXPORT_FORMATS:
-            raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail="Invalid export format")
-        # Validate all SDOC content entries
-        check_sdoc_content(export_params.content, export_format, metrics)
         with tempfile.TemporaryDirectory() as temp_dir:
             temp_dir_path = Path(temp_dir)
             input_dir = temp_dir_path / "input"
