@@ -11,8 +11,7 @@ ENV WORKING_DIR="/opt/strictdoc" \
     PORT=9083 \
     METRICS_PORT=9183 \
     METRICS_SERVER_ENABLED=true \
-    LOG_LEVEL=INFO \
-    ENABLE_GITHUB_EXPORT=false
+    LOG_LEVEL=INFO
 
 WORKDIR ${WORKING_DIR}
 
@@ -25,7 +24,6 @@ COPY --from=uv-source /uv /usr/local/bin/uv
 RUN microdnf install -y \
         ca-certificates \
         shadow-utils \
-        git \
     && microdnf clean all
 
 # Copy Python version file and dependency files
