@@ -36,7 +36,7 @@ def test_export_formats(test_parameters: TestParameters, sample_sdoc: str, expor
     """Test exporting to different formats."""
     response = test_parameters.request_session.post(
         f"{test_parameters.base_url}/export",
-        data={"content": {"1.sdoc": sample_sdoc}, "format": export_format, "file_name": "test-export"},
+        json={"content": {"1.sdoc": sample_sdoc}, "format": export_format, "file_name": "test-export"},
         headers={"Content-Type": "text/plain"},
         timeout=30,
     )
@@ -77,7 +77,7 @@ def test_export_pdf(test_parameters: TestParameters, sample_sdoc: str) -> None:
     """Test exporting to PDF format."""
     response = test_parameters.request_session.post(
         f"{test_parameters.base_url}/export",
-        data={"content": {"1.sdoc": sample_sdoc}, "format": "html2pdf", "file_name": "test-export"},
+        json={"content": {"1.sdoc": sample_sdoc}, "format": "html2pdf", "file_name": "test-export"},
         headers={"Content-Type": "text/plain"},
         timeout=60,  # PDF export might take longer
     )
@@ -97,7 +97,7 @@ def test_invalid_export_format(test_parameters: TestParameters, sample_sdoc: str
     """Test providing an invalid export format."""
     response = test_parameters.request_session.post(
         f"{test_parameters.base_url}/export",
-        data={"content": {"1.sdoc": sample_sdoc}, "format": "invalid", "file_name": "test-export"},
+        json={"content": {"1.sdoc": sample_sdoc}, "format": "invalid", "file_name": "test-export"},
         headers={"Content-Type": "text/plain"},
     )
 
@@ -110,7 +110,7 @@ def test_invalid_sdoc_content(test_parameters: TestParameters) -> None:
     invalid_sdoc = "This is not valid SDOC content"
     response = test_parameters.request_session.post(
         f"{test_parameters.base_url}/export",
-        data={"content": {"1.sdoc": invalid_sdoc}, "format": "html", "file_name": "test-export"},
+        json={"content": {"1.sdoc": invalid_sdoc}, "format": "html", "file_name": "test-export"},
         headers={"Content-Type": "text/plain"},
     )
 
@@ -122,7 +122,7 @@ def test_empty_sdoc_body(test_parameters: TestParameters) -> None:
     """Test providing empty SDOC body."""
     response = test_parameters.request_session.post(
         f"{test_parameters.base_url}/export",
-        data={"content": {"1.sdoc": ""}, "format": "html", "file_name": "test-export"},
+        json={"content": {"1.sdoc": ""}, "format": "html", "file_name": "test-export"},
         headers={"Content-Type": "text/plain"},
     )
 
@@ -134,7 +134,7 @@ def test_missing_sdoc_body(test_parameters: TestParameters) -> None:
     """Test request without SDOC body at all."""
     response = test_parameters.request_session.post(
         f"{test_parameters.base_url}/export",
-        data={"format": "html", "file_name": "test-export"},
+        json={"format": "html", "file_name": "test-export"},
         headers={"Content-Type": "text/plain"},
     )
 
