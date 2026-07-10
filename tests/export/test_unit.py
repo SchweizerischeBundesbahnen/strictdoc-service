@@ -1,8 +1,10 @@
 """Unit tests for the export functionality of StrictDoc service."""
 
 from http import HTTPStatus
+from pathlib import Path
 
 import pytest
+from fastapi.responses import FileResponse
 from fastapi.testclient import TestClient
 from pytest_mock import MockFixture
 
@@ -27,15 +29,24 @@ def test_export_formats(
     file_extension: str,
     content: bytes,
     mocker: MockFixture,
+    tmp_path: Path,
 ) -> None:
     """Test exporting to different formats with proper mocking."""
-    target_path = "app.strictdoc_controller.export_document"
-    mocker.patch(target_path, return_value=content)
+    temp_file = tmp_path / f"test-export{file_extension}"
+    temp_file.write_bytes(content)
+
+    mocker.patch(
+        "app.strictdoc_controller._export_documents",
+        return_value=FileResponse(
+            path=str(temp_file),
+            media_type=mime_type,
+            filename=f"test-export{file_extension}",
+        ),
+    )
 
     response = client.post(
-        f"/export?format={export_format}&file_name=test-export",
-        content=sample_sdoc,
-        headers={"Content-Type": "text/plain"},
+        "/export",
+        json={"content": {"doc.sdoc": sample_sdoc}, "format": export_format, "file_name": "test-export"},
     )
 
     # Verify the response
@@ -45,20 +56,28 @@ def test_export_formats(
     assert f'filename="test-export{file_extension}"' in content_disposition
 
 
-def test_export_pdf(client: TestClient, sample_sdoc: str, mocker: MockFixture) -> None:
+def test_export_pdf(client: TestClient, sample_sdoc: str, mocker: MockFixture, tmp_path: Path) -> None:
     """Test exporting to PDF format (which might be unstable)."""
     export_format = "html2pdf"
     mime_type = "application/pdf"
     file_extension = ".pdf"
     content = b"%PDF-1.4"  # PDF magic number
 
-    target_path = "app.strictdoc_controller.export_document"
-    mocker.patch(target_path, return_value=content)
+    temp_file = tmp_path / f"test-export{file_extension}"
+    temp_file.write_bytes(content)
+
+    mocker.patch(
+        "app.strictdoc_controller._export_documents",
+        return_value=FileResponse(
+            path=str(temp_file),
+            media_type=mime_type,
+            filename=f"test-export{file_extension}",
+        ),
+    )
 
     response = client.post(
-        f"/export?format={export_format}&file_name=test-export",
-        content=sample_sdoc,
-        headers={"Content-Type": "text/plain"},
+        "/export",
+        json={"content": {"doc.sdoc": sample_sdoc}, "format": export_format, "file_name": "test-export"},
     )
 
     # If successful, verify the response
@@ -70,13 +89,19 @@ def test_export_pdf(client: TestClient, sample_sdoc: str, mocker: MockFixture) -
 
 def test_export_pdf_error(client: TestClient, sample_sdoc: str, mocker: MockFixture) -> None:
     """Test handling of PDF export failures."""
-    target_path = "app.strictdoc_controller.export_document"
-    mocker.patch(target_path, side_effect=RuntimeError("PDF export failed"))
+    from fastapi import HTTPException
+
+    mocker.patch(
+        "app.strictdoc_controller._export_documents",
+        side_effect=HTTPException(
+            status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+            detail="Export failed: PDF export failed",
+        ),
+    )
 
     response = client.post(
-        "/export?format=html2pdf&file_name=test-export",
-        content=sample_sdoc,
-        headers={"Content-Type": "text/plain"},
+        "/export",
+        json={"content": {"doc.sdoc": sample_sdoc}, "format": "html2pdf", "file_name": "test-export"},
     )
 
     # Verify the expected error response
@@ -87,9 +112,8 @@ def test_export_pdf_error(client: TestClient, sample_sdoc: str, mocker: MockFixt
 def test_invalid_export_format(client: TestClient, sample_sdoc: str) -> None:
     """Test providing an invalid export format."""
     response = client.post(
-        "/export?format=invalid&file_name=test-export",
-        content=sample_sdoc,
-        headers={"Content-Type": "text/plain"},
+        "/export",
+        json={"content": {"doc.sdoc": sample_sdoc}, "format": "invalid", "file_name": "test-export"},
     )
 
     # Verify the expected error response
@@ -99,11 +123,9 @@ def test_invalid_export_format(client: TestClient, sample_sdoc: str) -> None:
 
 def test_invalid_sdoc_content(client: TestClient) -> None:
     """Test providing invalid SDOC content."""
-    invalid_sdoc = "This is not valid SDOC content"
     response = client.post(
-        "/export?format=html&file_name=test-export",
-        content=invalid_sdoc,
-        headers={"Content-Type": "text/plain"},
+        "/export",
+        json={"content": {"doc.sdoc": "This is not valid SDOC content"}, "format": "html", "file_name": "test-export"},
     )
 
     # Verify the expected error response
@@ -112,22 +134,21 @@ def test_invalid_sdoc_content(client: TestClient) -> None:
 
 
 def test_empty_sdoc_body(client: TestClient) -> None:
-    """Test providing empty SDOC body."""
+    """Test providing empty SDOC content."""
     response = client.post(
-        "/export?format=html&file_name=test-export",
-        content="",
-        headers={"Content-Type": "text/plain"},
+        "/export",
+        json={"content": {"doc.sdoc": ""}, "format": "html", "file_name": "test-export"},
     )
 
-    # Verify the expected error response - FastAPI returns 422 for missing required body
-    assert response.status_code in {HTTPStatus.BAD_REQUEST, HTTPStatus.UNPROCESSABLE_ENTITY}
+    # Empty content string fails validation
+    assert response.status_code == HTTPStatus.BAD_REQUEST
 
 
 def test_missing_sdoc_body(client: TestClient) -> None:
-    """Test request without SDOC body at all."""
+    """Test request without JSON body at all."""
     response = client.post(
-        "/export?format=html&file_name=test-export",
-        headers={"Content-Type": "text/plain"},
+        "/export",
+        headers={"Content-Type": "application/json"},
     )
 
     # Verify the expected error response - FastAPI returns 422 for missing required body
