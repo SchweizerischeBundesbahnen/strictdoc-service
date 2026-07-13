@@ -1,5 +1,6 @@
 """Tests for the StrictDoc controller module."""
 
+from http import HTTPStatus
 import tempfile
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
@@ -228,6 +229,68 @@ async def test_missing_sdoc_format_raises() -> None:
     params = StrictdocExportParams(content={"0": "[DOCUMENT]"}, format="html", file_name="test")
     with pytest.raises(HTTPException):
         await _export_documents(params, "test")
+
+
+@pytest.mark.asyncio
+async def test_strictdoc_command_fails_raises_strictdoc_exception() -> None:
+    """Test StrictDocExportException raised when command fails. Then returns HTTPexception 400"""
+    from app.strictdoc_controller import _export_documents
+
+    params = StrictdocExportParams(content={"0.sdoc": "[DOCUMENT]"}, format="html", file_name="test")
+    with pytest.raises(HTTPException, check=lambda e: e.status_code == 400 and "Export failed:" in e.detail):
+        with patch("asyncio.create_subprocess_exec") as mock_subprocess:
+            mock_process = AsyncMock()
+            mock_process.communicate.return_value = (b"", b"")
+            mock_process.returncode = 1
+            mock_subprocess.return_value = mock_process
+
+            await _export_documents(params, "test")
+
+
+@pytest.mark.asyncio
+async def test_no_file_found_fails_raises_bad_request() -> None:
+    """Test StrictDocExportException raised when command fails. Then returns HTTPexception 400"""
+    from app.strictdoc_controller import _export_documents
+
+    params = StrictdocExportParams(content={"0.sdoc": "[DOCUMENT]"}, format="html", file_name="test")
+    with pytest.raises(HTTPException, check=lambda e: e.status_code == 400 and "Export failed:" in e.detail):
+        with (
+            patch(
+                "asyncio.create_subprocess_exec",
+            ) as mock_subprocess,
+            patch("app.strictdoc_controller.find_exported_file") as find_file_mock,
+        ):
+            mock_process = AsyncMock()
+            mock_process.communicate.return_value = (b"", b"")
+            mock_process.returncode = 0
+            mock_subprocess.return_value = mock_process
+
+            find_file_mock.side_effect = HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=f"No zip file found in output after export")
+
+            await _export_documents(params, "test")
+
+
+@pytest.mark.asyncio
+async def test_unforeseen_exception_raised_raises_500() -> None:
+    """Test StrictDocExportException raised when command fails. Then returns HTTPexception 400"""
+    from app.strictdoc_controller import _export_documents
+
+    params = StrictdocExportParams(content={"0.sdoc": "[DOCUMENT]"}, format="html", file_name="test")
+    with pytest.raises(HTTPException, check=lambda e: e.status_code == 500 and "Export failed:" in e.detail):
+        with (
+            patch(
+                "asyncio.create_subprocess_exec",
+            ) as mock_subprocess,
+            patch("app.strictdoc_controller._build_single_file_response") as build_response_mock,
+        ):
+            mock_process = AsyncMock()
+            mock_process.communicate.return_value = (b"", b"")
+            mock_process.returncode = 0
+            mock_subprocess.return_value = mock_process
+
+            build_response_mock.side_effect = ValueError("I am an error")
+
+            await _export_documents(params, "test")
 
 
 def test_validation_exception_handler_format_error(client: TestClient) -> None:
