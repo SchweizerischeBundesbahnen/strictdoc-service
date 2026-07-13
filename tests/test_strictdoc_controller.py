@@ -4,7 +4,7 @@ import tempfile
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
-from app.strictdoc_controller import StrictdocExportParams
+from app.strictdoc_controller import StrictDocExportException, StrictdocExportParams
 import pytest
 from fastapi.testclient import TestClient
 from fastapi import HTTPException
@@ -122,7 +122,7 @@ async def test_run_strictdoc_command_failure() -> None:
         mock_process.returncode = 1
         mock_subprocess.return_value = mock_process
 
-        with pytest.raises(RuntimeError) as exc_info:
+        with pytest.raises(StrictDocExportException) as exc_info:
             await run_strictdoc_command(["false"])
 
         assert "StrictDoc command failed" in str(exc_info.value)
@@ -142,7 +142,7 @@ async def test_run_strictdoc_command_stdout_capture() -> None:
         mock_process.returncode = 1
         mock_subprocess.return_value = mock_process
 
-        with pytest.raises(RuntimeError) as exc_info:
+        with pytest.raises(StrictDocExportException) as exc_info:
             await run_strictdoc_command(["strictdoc", "export"])
 
         # Verify stdout is captured in the error message
@@ -162,7 +162,7 @@ async def test_run_strictdoc_command_combined_output() -> None:
         mock_process.returncode = 1
         mock_subprocess.return_value = mock_process
 
-        with pytest.raises(RuntimeError) as exc_info:
+        with pytest.raises(StrictDocExportException) as exc_info:
             await run_strictdoc_command(["command"])
 
         error_message = str(exc_info.value)

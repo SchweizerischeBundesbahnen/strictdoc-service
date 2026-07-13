@@ -83,7 +83,7 @@ def test_export_pdf(test_parameters: TestParameters, sample_sdoc: str) -> None:
     )
 
     # PDF export can fail on some systems, so we accept either success or server error
-    assert response.status_code in {HTTPStatus.OK, HTTPStatus.INTERNAL_SERVER_ERROR}
+    assert response.status_code in {HTTPStatus.OK, HTTPStatus.BAD_REQUEST}
 
     if response.status_code == HTTPStatus.OK:
         assert "application/pdf" in response.headers["Content-Type"]

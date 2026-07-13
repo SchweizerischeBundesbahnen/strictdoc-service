@@ -246,8 +246,8 @@ async def run_strictdoc_command(cmd: list[str]) -> None:
             logger.warning("StrictDoc CLI warnings: %s", sanitize_for_logging(stderr_text))
 
     except Exception as e:
-        logger.exception("Command execution failed: %s", str(e))
-        raise StrictDocExportException(f"Command execution failed: {e!s}") from e
+        logger.exception("StrictDoc command failed: %s", sanitize_for_logging(str(e)))
+        raise StrictDocExportException(f"StrictDoc command failed: {e!s}") from e
 
 
 async def export_bulk_with_action(input_dir: Path, output_dir: Path, export_format: str) -> None:
@@ -265,7 +265,7 @@ async def export_bulk_with_action(input_dir: Path, output_dir: Path, export_form
         cmd = ["strictdoc", "export", "--formats", export_format, "--output-dir", str(output_dir), str(input_dir)]
         await run_strictdoc_command(cmd)
     except Exception as e:
-        logger.exception("Export command failed: %s", str(e))
+        logger.exception("Export command failed: %s", sanitize_for_logging(str(e)))
         raise StrictDocExportException(f"Export command failed: {e!s}") from e
 
 
@@ -288,7 +288,7 @@ async def export_bulk_to_format(input_dir: Path, output_dir: Path, export_format
     except StrictDocExportException:
         raise
     except Exception as e:
-        logger.exception("Bulk export failed: %s", str(e))
+        logger.exception("Bulk export failed: %s", sanitize_for_logging(str(e)))
         raise RuntimeError(f"Export to {export_format} failed: {e!s}") from e
 
 
