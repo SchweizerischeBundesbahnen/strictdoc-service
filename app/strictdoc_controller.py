@@ -176,6 +176,10 @@ class StrictdocExportParams(BaseModel):
     file_name: str = Field(description="Returned file name")
 
 
+class StrictDocExportException(Exception):
+    """Custom exception to map to BAD_REQUEST"""
+
+
 # Middleware for logging
 @app.middleware("http")
 async def log_requests(request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
@@ -235,7 +239,7 @@ async def run_strictdoc_command(cmd: list[str]) -> None:
             stderr_text = stderr.decode("utf-8") if stderr else ""
             error_output = (stderr_text + "\n" + stdout_text).strip() or "Unknown error"
             logger.error("StrictDoc CLI error (returncode=%d): %s", process.returncode, sanitize_for_logging(error_output))
-            raise RuntimeError(f"StrictDoc command failed: {sanitize_for_logging(error_output)}")
+            raise StrictDocExportException(f"StrictDoc command failed: {sanitize_for_logging(error_output)}")
 
         if stderr:
             stderr_text = stderr.decode("utf-8")
@@ -243,7 +247,7 @@ async def run_strictdoc_command(cmd: list[str]) -> None:
 
     except Exception as e:
         logger.exception("Command execution failed: %s", str(e))
-        raise RuntimeError(f"Command execution failed: {e!s}") from e
+        raise StrictDocExportException(f"Command execution failed: {e!s}") from e
 
 
 async def export_bulk_with_action(input_dir: Path, output_dir: Path, export_format: str) -> None:
@@ -262,7 +266,7 @@ async def export_bulk_with_action(input_dir: Path, output_dir: Path, export_form
         await run_strictdoc_command(cmd)
     except Exception as e:
         logger.exception("Export command failed: %s", str(e))
-        raise RuntimeError(f"Export failed: {e!s}") from e
+        raise StrictDocExportException(f"Export command failed: {e!s}") from e
 
 
 async def export_bulk_to_format(input_dir: Path, output_dir: Path, export_format: str) -> None:
@@ -281,9 +285,11 @@ async def export_bulk_to_format(input_dir: Path, output_dir: Path, export_format
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=f"Invalid export format: {export_format}")
     try:
         await export_bulk_with_action(input_dir, output_dir, export_format)
+    except StrictDocExportException:
+        raise
     except Exception as e:
         logger.exception("Bulk export failed: %s", str(e))
-        raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail=f"Export to {export_format} failed: {e!s}") from e
+        raise RuntimeError(f"Export to {export_format} failed: {e!s}") from e
 
 
 def find_exported_file(output_dir: Path, export_format: str, extension: str) -> Path:
@@ -471,9 +477,12 @@ async def _export_documents(export_params: StrictdocExportParams, sanitized_file
 
     except HTTPException:
         raise
-    except Exception as e:
-        logger.exception("Export failed: %s", str(e))
+    except StrictDocExportException as e:
+        logger.exception("Exception strictdoc command raised: %s", str(e))
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=f"Export failed: {e!s}") from e
+    except Exception as e:
+        logger.exception("Export failed for unknown reason: %s", str(e))
+        raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail=f"Export failed: {e!s}") from e
     finally:
         # Ensure metrics are recorded even on asyncio.CancelledError (which is a BaseException)
         if not export_completed:
