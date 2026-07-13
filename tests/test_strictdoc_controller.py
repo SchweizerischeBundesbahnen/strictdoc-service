@@ -252,8 +252,8 @@ async def test_no_file_found_fails_raises_bad_request() -> None:
     """Test StrictDocExportException raised when command fails. Then returns HTTPexception 400"""
     from app.strictdoc_controller import _export_documents
 
-    params = StrictdocExportParams(content={"0.sdoc": "[DOCUMENT]"}, format="html", file_name="test")
-    with pytest.raises(HTTPException, check=lambda e: e.status_code == 400 and "Export failed:" in e.detail):
+    params = StrictdocExportParams(content={"0.sdoc": "[DOCUMENT]"}, format="reqif-sdoc", file_name="test")
+    with pytest.raises(HTTPException, check=lambda e: e.status_code == 400 and "No zip file found" in e.detail):
         with (
             patch(
                 "asyncio.create_subprocess_exec",
