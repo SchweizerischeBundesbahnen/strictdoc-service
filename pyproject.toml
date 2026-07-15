@@ -11,7 +11,7 @@ requires-python = ">=3.14,<3.15"
 dependencies = [
     "strictdoc==0.26.0",
     "fastapi==0.139.0",
-    "uvicorn==0.50.2",
+    "uvicorn==0.51.0",
     "pathvalidate==3.3.1",
     "prometheus-client==0.25.0",
     "prometheus-fastapi-instrumentator==8.0.2",
@@ -26,14 +26,14 @@ Repository = "https://github.com/SchweizerischeBundesbahnen/strictdoc-service"
 [dependency-groups]
 dev = [
     "pre-commit==4.6.0",
-    "ruff==0.15.20",
-    "mypy==2.1.0",
+    "ruff==0.15.21",
+    "mypy==2.2.0",
 ]
 test = [
-    "tox==4.56.2",
+    "tox==4.56.4",
     "tox-uv==1.35.2",
     # for debug source code for pytest --> see tox.ini section [testenv]
-    "docker==7.1.0",
+    "docker==7.2.0",
     "pytest==9.1.1",
     "pytest-mock==3.15.1",
     "pytest-asyncio==1.4.0",
