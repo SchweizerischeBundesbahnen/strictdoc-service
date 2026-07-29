@@ -1304,7 +1304,7 @@ wheels = [
 
 [[package]]
 name = "strictdoc"
-version = "0.27.0"
+version = "0.27.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "beautifulsoup4" },
@@ -1339,9 +1339,9 @@ dependencies = [
     { name = "xlrd" },
     { name = "xlsxwriter" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/d7/45/d4e860800d2e49288d4c47f5d5c5a37316402c4476475658f506ad7ca651/strictdoc-0.27.0.tar.gz", hash = "sha256:bae7fb0c24de6a271b1ea84bdb8c93bd79bf0cf22e6bd32a010ae4e10b0225cb", size = 5899966, upload-time = "2026-07-13T09:31:05.105Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/70/24/25518ee8c7b8705205281add25fd7949be5339794abf0902c44bb22a5fa8/strictdoc-0.27.1.tar.gz", hash = "sha256:cfbce1d7ec37287e4039dafcfff14683dcb63e14c7bd32ce70fe081a4a5b52ec", size = 5902123, upload-time = "2026-07-26T20:09:20.224Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/9a/49/e9bfe2935fc00f18d5b947892b3f0b1e3de284fb54d2025b16482fecddf9/strictdoc-0.27.0-py3-none-any.whl", hash = "sha256:227ff08389fe7f5849d0248d0800ecf82941ccc896d16819e51fbee996b2ae9a", size = 6214353, upload-time = "2026-07-13T09:31:02.749Z" },
+    { url = "https://files.pythonhosted.org/packages/5c/c4/40c54d739ddf61eed7b479a99fa5e36d6b34b9a631554f8ebb60834a644b/strictdoc-0.27.1-py3-none-any.whl", hash = "sha256:1e7d6ffe2d70bff177613bb70e979b85f72ed61c46338771ed10bef43e73636f", size = 6213980, upload-time = "2026-07-26T20:09:18.418Z" },
 ]
 
 [[package]]
@@ -1381,7 +1381,7 @@ requires-dist = [
     { name = "pathvalidate", specifier = "==3.3.1" },
     { name = "prometheus-client", specifier = "==0.26.0" },
     { name = "prometheus-fastapi-instrumentator", specifier = "==8.1.0" },
-    { name = "strictdoc", specifier = "==0.27.0" },
+    { name = "strictdoc", specifier = "==0.27.1" },
     { name = "urllib3", specifier = "==2.7.0" },
     { name = "uvicorn", specifier = "==0.51.0" },
 ]
@@ -1877,11 +1877,11 @@ wheels = [
 
 [[package]]
 name = "xlsxwriter"
-version = "1.4.5"
+version = "3.2.9"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/15/72/75b6c904ebabb3fc22965dd78e080252d5950af652a34cd3e0ed538ab1ff/XlsxWriter-1.4.5.tar.gz", hash = "sha256:0956747859567ec01907e561a7d8413de18a7aae36860f979f9da52b9d58bc19", size = 270337, upload-time = "2021-07-30T13:24:44.942Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/46/2c/c06ef49dc36e7954e55b802a8b231770d286a9758b3d936bd1e04ce5ba88/xlsxwriter-3.2.9.tar.gz", hash = "sha256:254b1c37a368c444eac6e2f867405cc9e461b0ed97a3233b2ac1e574efb4140c", size = 215940, upload-time = "2025-09-16T00:16:21.63Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/96/34/c0f14cd35304bd1ffeaf9bdb88d1a8b3d7153714dd2540a5f6341acf25ff/XlsxWriter-1.4.5-py2.py3-none-any.whl", hash = "sha256:f9335f1736e2c4fd80e940fe1b6d92d967bf454a1e5d639b0b7a4459ade790cc", size = 149747, upload-time = "2021-07-30T13:24:42.6Z" },
+    { url = "https://files.pythonhosted.org/packages/3a/0c/3662f4a66880196a590b202f0db82d919dd2f89e99a27fadef91c4a33d41/xlsxwriter-3.2.9-py3-none-any.whl", hash = "sha256:9a5db42bc5dff014806c58a20b9eae7322a134abb6fce3c92c181bfb275ec5b3", size = 175315, upload-time = "2025-09-16T00:16:20.108Z" },
 ]
 
 [[package]]
