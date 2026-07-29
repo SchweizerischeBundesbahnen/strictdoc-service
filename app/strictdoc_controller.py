@@ -372,6 +372,7 @@ def _build_single_file_response(
     validate_export_paths(persistent_temp_file, temp_dir_obj.resolve(), export_file, output_dir if export_format != "html" else output_dir.parent)
     shutil.copy2(export_file, persistent_temp_file)
     logger.info("Exported single %s file to %s", sanitize_for_logging(export_format), sanitize_for_logging(str(persistent_temp_file)))
+    observe_response_body_size(persistent_temp_file.stat().st_size)
 
     return FileResponse(path=str(persistent_temp_file), media_type=mime_type, filename=secure_filename, background=BackgroundTask(get_cleanup_persistent_temp_file(persistent_temp_file)))
 
@@ -407,6 +408,7 @@ def _build_bulk_zip_response(
     validate_export_paths(persistent_temp_file, temp_dir_obj.resolve(), export_file, temp_dir_path)
     shutil.copy2(export_file, persistent_temp_file)
     logger.info("Exported bulk %s zip to %s", sanitize_for_logging(export_format), sanitize_for_logging(str(persistent_temp_file)))
+    observe_response_body_size(persistent_temp_file.stat().st_size)
 
     return FileResponse(path=str(persistent_temp_file), media_type="application/zip", filename=secure_filename, background=BackgroundTask(get_cleanup_persistent_temp_file(persistent_temp_file)))
 
@@ -472,7 +474,6 @@ async def _export_documents(export_params: StrictdocExportParams, sanitized_file
 
             response = _build_single_file_response(output_dir, export_format, sanitized_file_name) if len(export_params.content) == 1 else _build_bulk_zip_response(temp_dir_path, output_dir, export_format, sanitized_file_name)
             export_completed = True
-            observe_response_body_size(response.stat_result.st_size if response.stat_result else 0)
             return response
 
     except HTTPException:
