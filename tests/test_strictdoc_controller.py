@@ -318,7 +318,8 @@ def test_build_single_file_response_html_creates_zip() -> None:
         html_dir.mkdir()
         (html_dir / "index.html").write_text("<html>Test</html>")
 
-        with patch("app.strictdoc_controller.validate_export_paths"), patch("shutil.copy2"):
+        with patch("app.strictdoc_controller.validate_export_paths"), patch("shutil.copy2"), patch("app.strictdoc_controller.Path.stat") as mock_stat:
+            mock_stat.return_value.st_size = 1024
             response = _build_single_file_response(output_dir, "html", "test-output")
 
             assert response.media_type == "application/zip"
@@ -339,7 +340,8 @@ def test_build_bulk_zip_response_html_creates_zip() -> None:
         html_dir.mkdir()
         (html_dir / "index.html").write_text("<html>Test</html>")
 
-        with patch("app.strictdoc_controller.validate_export_paths"), patch("shutil.copy2"):
+        with patch("app.strictdoc_controller.validate_export_paths"), patch("shutil.copy2"), patch("app.strictdoc_controller.Path.stat") as mock_stat:
+            mock_stat.return_value.st_size = 1024
             response = _build_bulk_zip_response(Path(temp_dir), output_dir, "html", "test-output")
 
             assert response.media_type == "application/zip"
@@ -463,11 +465,12 @@ async def test_sanitize_filename_is_called() -> None:
         patch("app.strictdoc_controller.find_exported_file", return_value=Path(tempfile.gettempdir()) / "safe.sdoc"),
         patch("app.strictdoc_controller.validate_export_paths"),
         patch("shutil.copy2"),
-        patch("app.strictdoc_controller.FileResponse") as mock_file_response,
+        patch("app.strictdoc_controller.FileResponse"),
+        patch("app.strictdoc_controller.Path.stat") as mock_stat,
         patch("app.strictdoc_controller.sanitize_filename") as mock_sanitize,
     ):
         mock_sanitize.return_value = "safe_filename"
-        mock_file_response.return_value.stat_result.st_size = 1024
+        mock_stat.return_value.st_size = 1024
 
         await export_documents(
             export_params=StrictdocExportParams(
@@ -497,10 +500,11 @@ async def test_successful_validation_with_safe_paths() -> None:
             patch("app.strictdoc_controller.find_exported_file", return_value=output_file),
             patch("app.strictdoc_controller.validate_export_paths") as mock_validate,
             patch("shutil.copy2") as mock_copy,
+            patch("app.strictdoc_controller.Path.stat") as mock_stat,
             patch("app.strictdoc_controller.FileResponse") as mock_response,
         ):
             mock_validate.return_value = None
-            mock_response.return_value.stat_result.st_size = 1024
+            mock_stat.return_value.st_size = 1024
 
             await export_documents(
                 export_params=StrictdocExportParams(
@@ -529,9 +533,10 @@ async def test_path_normalization() -> None:
             patch("app.strictdoc_controller.find_exported_file", return_value=output_file),
             patch("app.strictdoc_controller.validate_export_paths"),
             patch("shutil.copy2") as mock_copy,
+            patch("app.strictdoc_controller.Path.stat") as mock_stat,
             patch("app.strictdoc_controller.FileResponse") as mock_response,
         ):
-            mock_response.return_value.stat_result.st_size = 1024
+            mock_stat.return_value.st_size = 1024
             await export_documents(
                 export_params=StrictdocExportParams(
                     content={"doc.sdoc": "[DOCUMENT]\nTITLE: Test\n"},
