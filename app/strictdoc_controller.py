@@ -416,6 +416,8 @@ def _build_bulk_zip_response(
 def check_sdoc_content(content: dict[str, str], export_format: str, metrics: StrictDocMetrics) -> None:
     """Basic checks for sdoc content. Raises HTTPException if failed."""
     if len(content) == 0:
+        metrics.record_export_failure()
+        increment_export_failure(export_format)
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail="Empty content body")
     for doc_name, doc_content in content.items():
         if not doc_content or "[DOCUMENT]" not in doc_content:
