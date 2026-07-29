@@ -44,7 +44,7 @@ def main() -> None:
     """
     parser = argparse.ArgumentParser(description="StrictDoc service")
 
-    parser.add_argument("--host", type=str, default="0.0.0.0", help="Host to run the service on")  # noqa: S104 - Intentional binding for container environments
+    parser.add_argument("--host", type=str, default="127.0.0.1", help="Host to run the service on")  # noqa: S104 - Intentional binding for container environments
     parser.add_argument("--port", type=int, default=DEFAULT_PORT, help="Port to run the service on")
     parser.add_argument("--log-level", type=str, default="INFO", help="Logging level")
     args = parser.parse_args()
