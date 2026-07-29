@@ -500,6 +500,7 @@ async def test_successful_validation_with_safe_paths() -> None:
             patch("app.strictdoc_controller.FileResponse") as mock_response,
         ):
             mock_validate.return_value = None
+            mock_response.return_value.stat_result.st_size = 1024
 
             await export_documents(
                 export_params=StrictdocExportParams(
@@ -530,6 +531,7 @@ async def test_path_normalization() -> None:
             patch("shutil.copy2") as mock_copy,
             patch("app.strictdoc_controller.FileResponse") as mock_response,
         ):
+            mock_response.return_value.stat_result.st_size = 1024
             await export_documents(
                 export_params=StrictdocExportParams(
                     content={"doc.sdoc": "[DOCUMENT]\nTITLE: Test\n"},
