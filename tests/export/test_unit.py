@@ -153,3 +153,57 @@ def test_missing_sdoc_body(client: TestClient) -> None:
 
     # Verify the expected error response - FastAPI returns 422 for missing required body
     assert response.status_code == HTTPStatus.UNPROCESSABLE_ENTITY
+
+
+def test_multi_doc_export_returns_zip(
+    client: TestClient,
+    sample_sdoc: str,
+    mocker: MockFixture,
+) -> None:
+    """Test that exporting multiple documents returns a ZIP archive (bulk-ZIP branch)."""
+    mocker.patch(
+        "app.strictdoc_controller.export_bulk_to_format",
+        return_value=None,
+    )
+
+    response = client.post(
+        "/export",
+        json={
+            "content": {
+                "doc_a.sdoc": sample_sdoc,
+                "doc_b.sdoc": sample_sdoc,
+            },
+            "format": "sdoc",
+            "file_name": "test-multi-export",
+        },
+    )
+
+    assert response.status_code == HTTPStatus.OK
+    assert "application/zip" in response.headers["Content-Type"]
+    content_disposition = response.headers.get("Content-Disposition", "")
+    assert 'filename="test-multi-export.zip"' in content_disposition
+
+
+def test_multi_doc_filename_collision_rejected(
+    client: TestClient,
+    sample_sdoc: str,
+) -> None:
+    """Test that multi-doc export is rejected when two names collide after sanitization.
+
+    'a/b.sdoc' and 'a_b.sdoc' both sanitize to 'a_b.sdoc', triggering the
+    collision guard in sanitize_sdoc_content_filenames.
+    """
+    response = client.post(
+        "/export",
+        json={
+            "content": {
+                "a/b.sdoc": sample_sdoc,
+                "a_b.sdoc": sample_sdoc,
+            },
+            "format": "sdoc",
+            "file_name": "test-export",
+        },
+    )
+
+    assert response.status_code == HTTPStatus.BAD_REQUEST
+    assert "Multi-export filename collision" in response.text

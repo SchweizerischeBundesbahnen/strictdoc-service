@@ -28,7 +28,7 @@ from strictdoc import __version__ as strictdoc_version  # type: ignore[import]
 
 from app.constants import EXPORT_FORMATS
 from app.metrics_server import METRICS_SERVER_ENABLED, MetricsServer
-from app.prometheus_metrics import increment_export_failure, increment_export_success, observe_export_duration
+from app.prometheus_metrics import increment_export_failure, increment_export_success, observe_export_duration, observe_request_body_size, observe_response_body_size
 from app.sanitization import sanitize_for_logging
 from app.strictdoc_metrics import get_strictdoc_metrics
 
@@ -326,6 +326,17 @@ def find_exported_file(output_dir: Path, export_format: str, extension: str) -> 
     return exported_files[0]
 
 
+def get_cleanup_persistent_temp_file(persistent_temp_file: Path) -> Callable[[], None]:
+    def cleanup_persistent_temp_file() -> None:
+        try:
+            if persistent_temp_file.exists():
+                persistent_temp_file.unlink()
+        except Exception as e:
+            logger.exception("Failed to clean up temporary file: %s", str(e))
+
+    return cleanup_persistent_temp_file
+
+
 def _build_single_file_response(
     output_dir: Path,
     export_format: str,
@@ -362,14 +373,7 @@ def _build_single_file_response(
     shutil.copy2(export_file, persistent_temp_file)
     logger.info("Exported single %s file to %s", sanitize_for_logging(export_format), sanitize_for_logging(str(persistent_temp_file)))
 
-    def cleanup() -> None:
-        try:
-            if persistent_temp_file.exists():
-                persistent_temp_file.unlink()
-        except Exception as e:
-            logger.exception("Failed to clean up temporary file: %s", str(e))
-
-    return FileResponse(path=str(persistent_temp_file), media_type=mime_type, filename=secure_filename, background=BackgroundTask(cleanup))
+    return FileResponse(path=str(persistent_temp_file), media_type=mime_type, filename=secure_filename, background=BackgroundTask(get_cleanup_persistent_temp_file(persistent_temp_file)))
 
 
 def _build_bulk_zip_response(
@@ -404,14 +408,7 @@ def _build_bulk_zip_response(
     shutil.copy2(export_file, persistent_temp_file)
     logger.info("Exported bulk %s zip to %s", sanitize_for_logging(export_format), sanitize_for_logging(str(persistent_temp_file)))
 
-    def cleanup() -> None:
-        try:
-            if persistent_temp_file.exists():
-                persistent_temp_file.unlink()
-        except Exception as e:
-            logger.exception("Failed to clean up temporary file: %s", str(e))
-
-    return FileResponse(path=str(persistent_temp_file), media_type="application/zip", filename=secure_filename, background=BackgroundTask(cleanup))
+    return FileResponse(path=str(persistent_temp_file), media_type="application/zip", filename=secure_filename, background=BackgroundTask(get_cleanup_persistent_temp_file(persistent_temp_file)))
 
 
 def check_sdoc_content(content: dict[str, str], export_format: str, metrics: StrictDocMetrics) -> None:
@@ -434,6 +431,8 @@ def check_sdoc_content(content: dict[str, str], export_format: str, metrics: Str
                 detail=f"Invalid SDOC file name: {sanitize_for_logging(doc_name)}. All file names must end with .sdoc",
             )
 
+    observe_request_body_size(sum(len(sdoc_content.encode("utf-8")) for sdoc_content in content.values()))
+
 
 async def _export_documents(export_params: StrictdocExportParams, sanitized_file_name: str) -> FileResponse:
     metrics = get_strictdoc_metrics()
@@ -441,7 +440,7 @@ async def _export_documents(export_params: StrictdocExportParams, sanitized_file
     export_completed = False
     metrics.record_export_start()
 
-    export_format = (export_params.format if isinstance(export_params, StrictdocExportParams) else "html").lower()
+    export_format = export_params.format.lower()
     if export_format not in EXPORT_FORMATS:
         metrics.record_export_failure()
         increment_export_failure(export_format)
@@ -473,6 +472,7 @@ async def _export_documents(export_params: StrictdocExportParams, sanitized_file
 
             response = _build_single_file_response(output_dir, export_format, sanitized_file_name) if len(export_params.content) == 1 else _build_bulk_zip_response(temp_dir_path, output_dir, export_format, sanitized_file_name)
             export_completed = True
+            observe_response_body_size(response.stat_result.st_size if response.stat_result else 0)
             return response
 
     except HTTPException:

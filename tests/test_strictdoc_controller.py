@@ -265,7 +265,7 @@ async def test_no_file_found_fails_raises_bad_request() -> None:
             mock_process.returncode = 0
             mock_subprocess.return_value = mock_process
 
-            find_file_mock.side_effect = HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=f"No zip file found in output after export")
+            find_file_mock.side_effect = HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail="No zip file found in output after export")
 
             await _export_documents(params, "test")
 
