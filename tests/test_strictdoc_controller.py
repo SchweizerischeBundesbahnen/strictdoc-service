@@ -463,10 +463,11 @@ async def test_sanitize_filename_is_called() -> None:
         patch("app.strictdoc_controller.find_exported_file", return_value=Path(tempfile.gettempdir()) / "safe.sdoc"),
         patch("app.strictdoc_controller.validate_export_paths"),
         patch("shutil.copy2"),
-        patch("app.strictdoc_controller.FileResponse"),
+        patch("app.strictdoc_controller.FileResponse") as mock_file_response,
         patch("app.strictdoc_controller.sanitize_filename") as mock_sanitize,
     ):
         mock_sanitize.return_value = "safe_filename"
+        mock_file_response.return_value.stat_result.st_size = 1024
 
         await export_documents(
             export_params=StrictdocExportParams(
