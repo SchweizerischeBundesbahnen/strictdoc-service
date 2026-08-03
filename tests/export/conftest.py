@@ -126,13 +126,7 @@ def docker_setup() -> Generator[bool]:
         try:
             import subprocess
 
-            result = subprocess.run(
-                ["docker", "build", "-t", "strictdoc-service:test", "."],
-                env={**os.environ, "DOCKER_BUILDKIT": "1"},
-                capture_output=True,
-                text=True,
-                timeout=300,
-            )
+            result = subprocess.run(["docker", "build", "-t", "strictdoc-service:test", "."], env={**os.environ, "DOCKER_BUILDKIT": "1"}, capture_output=True, text=True, timeout=600)
             if result.returncode != 0:
                 logger.error(f"Docker build failed: {result.stderr}")
                 raise RuntimeError(f"Docker build failed: {result.stderr}")

@@ -350,30 +350,54 @@ See [monitoring/README.md](monitoring/README.md) for detailed setup instructions
     <code>POST</code> <code>/export</code>
   </summary>
 
-##### Parameters
+##### Request Body
 
-> | Parameter name | Type     | Data type | Description                                                                                                   |
-> |----------------|----------|-----------|---------------------------------------------------------------------------------------------------------------|
-> | format         | optional | string    | Export format: html, html2pdf, rst, json, excel, reqif-sdoc, reqifz-sdoc, sdoc, doxygen, spdx (default: html) |
-> | file_name      | optional | string    | Base name for the output file (default: exported-document)                                                    |
+Content-Type: `application/json`
+
+> | Field     | Type     | Data type     | Description                                                                                                        |
+> |-----------|----------|---------------|--------------------------------------------------------------------------------------------------------------------|
+> | content   | required | object (dict) | Map of `.sdoc` filename(s) to their text content, e.g. `{"doc.sdoc": "[DOCUMENT]\n..."}`. Supports multiple files. |
+> | format    | required | string        | Export format: `html`, `html2pdf`, `rst`, `json`, `excel`, `reqif-sdoc`, `reqifz-sdoc`, `sdoc`, `doxygen`, `spdx`  |
+> | file_name | required | string        | Base name for the output file (without extension)                                                                  |
 
 **Note on PDF Export:** The `html2pdf` format is currently **not available** in this service. PDF generation requires Chromium/ChromeDriver, which would increase the Docker image size by ~300MB+. If you need PDF output, consider:
 1. Using the `html` format and converting to PDF externally
 2. Using a separate PDF conversion service
 3. Building a custom image with Chromium installed
 
+**Note on HTML Export:** The `html` format returns a ZIP archive containing the full HTML site.
+
+**Note on Multi-Document Export:** When `content` contains more than one document, the response is always a ZIP archive regardless of the requested format.
+
 ##### Responses
 
-> | HTTP code | Content-Type             | Response                      |
-> |-----------|--------------------------|-------------------------------|
-> | `200`     | Varies by export format  | Exported document (file)      |
-> | `400`     | `plain/text`             | Error message with exception  |
-> | `500`     | `plain/text`             | Error message with exception  |
+> | HTTP code | Content-Type            | Response                                                   |
+> |-----------|-------------------------|------------------------------------------------------------|
+> | `200`     | Varies by export format | Exported document (single file, or ZIP for HTML/multi-doc) |
+> | `400`     | `application/json`      | Invalid request (bad format, missing `[DOCUMENT]`, etc.)   |
+> | `422`     | `application/json`      | Validation error                                           |
+> | `500`     | `application/json`      | Internal server error                                      |
 
 ##### Example cURL
 
+Single document export to ReqIF:
+
 > ```bash
-> curl -X POST -H "Content-Type: text/plain" --data-binary @input.sdoc "http://localhost:9083/export?format=reqif-sdoc&file_name=requirements" --output requirements.reqif
+> curl -X POST \
+>   -H "Content-Type: application/json" \
+>   --data '{"content": {"requirements.sdoc": "[DOCUMENT]\nTITLE: My Requirements\n"}, "format": "reqif-sdoc", "file_name": "requirements"}' \
+>   "http://localhost:9083/export" \
+>   --output requirements.reqif
+> ```
+
+Multiple documents export (returns ZIP):
+
+> ```bash
+> curl -X POST \
+>   -H "Content-Type: application/json" \
+>   --data '{"content": {"doc1.sdoc": "[DOCUMENT]\nTITLE: Doc 1\n", "doc2.sdoc": "[DOCUMENT]\nTITLE: Doc 2\n"}, "format": "json", "file_name": "export"}' \
+>   "http://localhost:9083/export" \
+>   --output export.zip
 > ```
 
 </details>

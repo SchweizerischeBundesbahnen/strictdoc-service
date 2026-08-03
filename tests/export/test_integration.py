@@ -36,9 +36,8 @@ def test_export_formats(test_parameters: TestParameters, sample_sdoc: str, expor
     """Test exporting to different formats."""
     response = test_parameters.request_session.post(
         f"{test_parameters.base_url}/export",
-        params={"format": export_format, "file_name": "test-export"},
-        data=sample_sdoc,
-        headers={"Content-Type": "text/plain"},
+        json={"content": {"1.sdoc": sample_sdoc}, "format": export_format, "file_name": "test-export"},
+        headers={"Content-Type": "application/json"},
         timeout=30,
     )
 
@@ -78,14 +77,13 @@ def test_export_pdf(test_parameters: TestParameters, sample_sdoc: str) -> None:
     """Test exporting to PDF format."""
     response = test_parameters.request_session.post(
         f"{test_parameters.base_url}/export",
-        params={"format": "html2pdf", "file_name": "test-export"},
-        data=sample_sdoc,
-        headers={"Content-Type": "text/plain"},
+        json={"content": {"1.sdoc": sample_sdoc}, "format": "html2pdf", "file_name": "test-export"},
+        headers={"Content-Type": "application/json"},
         timeout=60,  # PDF export might take longer
     )
 
     # PDF export can fail on some systems, so we accept either success or server error
-    assert response.status_code in {HTTPStatus.OK, HTTPStatus.INTERNAL_SERVER_ERROR}
+    assert response.status_code in {HTTPStatus.OK, HTTPStatus.BAD_REQUEST}
 
     if response.status_code == HTTPStatus.OK:
         assert "application/pdf" in response.headers["Content-Type"]
@@ -99,9 +97,8 @@ def test_invalid_export_format(test_parameters: TestParameters, sample_sdoc: str
     """Test providing an invalid export format."""
     response = test_parameters.request_session.post(
         f"{test_parameters.base_url}/export",
-        params={"format": "invalid", "file_name": "test-export"},
-        data=sample_sdoc,
-        headers={"Content-Type": "text/plain"},
+        json={"content": {"1.sdoc": sample_sdoc}, "format": "invalid", "file_name": "test-export"},
+        headers={"Content-Type": "application/json"},
     )
 
     assert response.status_code == HTTPStatus.BAD_REQUEST
@@ -113,9 +110,8 @@ def test_invalid_sdoc_content(test_parameters: TestParameters) -> None:
     invalid_sdoc = "This is not valid SDOC content"
     response = test_parameters.request_session.post(
         f"{test_parameters.base_url}/export",
-        params={"format": "html", "file_name": "test-export"},
-        data=invalid_sdoc,
-        headers={"Content-Type": "text/plain"},
+        json={"content": {"1.sdoc": invalid_sdoc}, "format": "html", "file_name": "test-export"},
+        headers={"Content-Type": "application/json"},
     )
 
     assert response.status_code == HTTPStatus.BAD_REQUEST
@@ -126,9 +122,8 @@ def test_empty_sdoc_body(test_parameters: TestParameters) -> None:
     """Test providing empty SDOC body."""
     response = test_parameters.request_session.post(
         f"{test_parameters.base_url}/export",
-        params={"format": "html", "file_name": "test-export"},
-        data="",
-        headers={"Content-Type": "text/plain"},
+        json={"content": {"1.sdoc": ""}, "format": "html", "file_name": "test-export"},
+        headers={"Content-Type": "application/json"},
     )
 
     # Empty body is caught by the validation check in export_document
@@ -139,8 +134,8 @@ def test_missing_sdoc_body(test_parameters: TestParameters) -> None:
     """Test request without SDOC body at all."""
     response = test_parameters.request_session.post(
         f"{test_parameters.base_url}/export",
-        params={"format": "html", "file_name": "test-export"},
-        headers={"Content-Type": "text/plain"},
+        json={"format": "html", "file_name": "test-export"},
+        headers={"Content-Type": "application/json"},
     )
 
     # FastAPI returns 422 for missing required body parameter
