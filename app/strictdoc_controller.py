@@ -51,12 +51,15 @@ DEFAULT_SERVER_HOST = "127.0.0.1"
 DEFAULT_SERVER_PORT = 5111
 DEFAULT_SECTION_BEHAVIOR = "[SECTION]"
 
+# A validation error location must hold at least the source and the field name.
+MIN_LOC_LENGTH = 2
+
 # Global metrics server instance
 _metrics_server: MetricsServer | None = None
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
+async def lifespan(app: FastAPI) -> AsyncGenerator[None]:  # noqa: ARG001
     """Manage application lifecycle including metrics server.
 
     Args:
@@ -113,7 +116,7 @@ if ENABLE_METRICS:
 
 # Add exception handler for FastAPI's validation errors
 @app.exception_handler(RequestValidationError)
-async def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
+async def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:  # noqa: ARG001
     """Convert 422 validation errors to 400 Bad Request for format validation.
 
     Args:
@@ -124,7 +127,6 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
         JSONResponse: The error response
 
     """
-    MIN_LOC_LENGTH = 2
     error_details = []
     format_validation_error = False
 
@@ -141,7 +143,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
         return JSONResponse(status_code=HTTPStatus.BAD_REQUEST, content={"detail": f"Invalid export format. Must be one of: {', '.join(EXPORT_FORMATS.keys())}"})
 
     # For other validation errors, use standard 422 response
-    return JSONResponse(status_code=HTTPStatus.UNPROCESSABLE_ENTITY, content={"detail": error_details if error_details else exc.errors()})
+    return JSONResponse(status_code=HTTPStatus.UNPROCESSABLE_ENTITY, content={"detail": error_details or exc.errors()})
 
 
 # Request and response models
@@ -176,7 +178,7 @@ class StrictdocExportParams(BaseModel):
     file_name: str = Field(description="Returned file name")
 
 
-class StrictDocExportException(Exception):
+class StrictDocExportError(Exception):
     """Custom exception to map to BAD_REQUEST"""
 
 
@@ -239,7 +241,8 @@ async def run_strictdoc_command(cmd: list[str]) -> None:
             stderr_text = stderr.decode("utf-8") if stderr else ""
             error_output = (stderr_text + "\n" + stdout_text).strip() or "Unknown error"
             logger.error("StrictDoc CLI error (returncode=%d): %s", process.returncode, sanitize_for_logging(error_output))
-            raise StrictDocExportException(f"StrictDoc command failed: {sanitize_for_logging(error_output)}")
+            # The surrounding try wraps the subprocess call, not this raise.
+            raise StrictDocExportError(f"StrictDoc command failed: {sanitize_for_logging(error_output)}")  # noqa: TRY301
 
         if stderr:
             stderr_text = stderr.decode("utf-8")
@@ -247,7 +250,7 @@ async def run_strictdoc_command(cmd: list[str]) -> None:
 
     except Exception as e:
         logger.exception("StrictDoc command failed: %s", sanitize_for_logging(str(e)))
-        raise StrictDocExportException(f"StrictDoc command failed: {e!s}") from e
+        raise StrictDocExportError(f"StrictDoc command failed: {e!s}") from e
 
 
 async def export_bulk_with_action(input_dir: Path, output_dir: Path, export_format: str) -> None:
@@ -259,14 +262,16 @@ async def export_bulk_with_action(input_dir: Path, output_dir: Path, export_form
         export_format: Export format name
 
     """
-    output_dir.mkdir(parents=True, exist_ok=True)
+    # A local mkdir costs microseconds, far less than the strictdoc subprocess
+    # that follows, so it does not warrant a thread hop.
+    output_dir.mkdir(parents=True, exist_ok=True)  # noqa: ASYNC240
 
     try:
         cmd = ["strictdoc", "export", "--formats", export_format, "--output-dir", str(output_dir), str(input_dir)]
         await run_strictdoc_command(cmd)
     except Exception as e:
         logger.exception("Export command failed: %s", sanitize_for_logging(str(e)))
-        raise StrictDocExportException(f"Export command failed: {e!s}") from e
+        raise StrictDocExportError(f"Export command failed: {e!s}") from e
 
 
 async def export_bulk_to_format(input_dir: Path, output_dir: Path, export_format: str) -> None:
@@ -285,7 +290,7 @@ async def export_bulk_to_format(input_dir: Path, output_dir: Path, export_format
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=f"Invalid export format: {export_format}")
     try:
         await export_bulk_with_action(input_dir, output_dir, export_format)
-    except StrictDocExportException:
+    except StrictDocExportError:
         raise
     except Exception as e:
         logger.exception("Bulk export failed: %s", sanitize_for_logging(str(e)))
@@ -480,7 +485,7 @@ async def _export_documents(export_params: StrictdocExportParams, sanitized_file
 
     except HTTPException:
         raise
-    except StrictDocExportException as e:
+    except StrictDocExportError as e:
         logger.exception("Exception strictdoc command raised: %s", str(e))
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=f"Export failed: {e!s}") from e
     except Exception as e:

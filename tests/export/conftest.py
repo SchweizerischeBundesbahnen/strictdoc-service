@@ -126,10 +126,11 @@ def docker_setup() -> Generator[bool]:
         try:
             import subprocess
 
-            result = subprocess.run(["docker", "build", "-t", "strictdoc-service:test", "."], env={**os.environ, "DOCKER_BUILDKIT": "1"}, capture_output=True, text=True, timeout=600)
+            result = subprocess.run(["docker", "build", "-t", "strictdoc-service:test", "."], env={**os.environ, "DOCKER_BUILDKIT": "1"}, capture_output=True, text=True, timeout=600, check=False)
             if result.returncode != 0:
                 logger.error(f"Docker build failed: {result.stderr}")
-                raise RuntimeError(f"Docker build failed: {result.stderr}")
+                # The surrounding try wraps the subprocess call, not this raise.
+                raise RuntimeError(f"Docker build failed: {result.stderr}")  # noqa: TRY301
             logger.info("Docker build succeeded")
         except subprocess.TimeoutExpired as e:
             logger.error("Docker build timed out")
@@ -186,7 +187,8 @@ def docker_setup() -> Generator[bool]:
             try:
                 logger.info("Removing test image")
                 client.images.remove("strictdoc-service:test", force=True)
-            except Exception as e:
+            # Cleanup is best effort: a failure here must not fail the test run.
+            except Exception as e:  # noqa: BLE001
                 logger.warning(f"Failed to remove test image: {e}")
         except DockerException as e:
             logger.exception("Error during cleanup: %s", str(e))

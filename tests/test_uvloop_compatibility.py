@@ -21,7 +21,6 @@ def test_uvloop_must_be_available() -> None:
         import uvloop
 
         assert uvloop.__version__ is not None, "uvloop version should be available"
-        print(f"✅ uvloop {uvloop.__version__} works on Python {python_version.major}.{python_version.minor}.{python_version.micro}")
 
     except ImportError as e:
         pytest.fail(
@@ -55,9 +54,8 @@ def test_uvloop_event_loop_functionality() -> None:
         result = uvloop.run(simple_task())
         assert result == "uvloop works", "uvloop event loop should execute async tasks"
 
-        print(f"✅ uvloop event loop functional on Python {python_version.major}.{python_version.minor}.{python_version.micro}")
-
-    except Exception as e:
+    # Any failure here is the finding: report it as a test failure, not a crash.
+    except Exception as e:  # noqa: BLE001
         pytest.fail(f"❌ uvloop event loop FAILED on Python {python_version.major}.{python_version.minor}\n\nError: {e}\n\nuvloop imported successfully but failed to function as an event loop.")
 
 

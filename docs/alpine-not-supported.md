@@ -14,7 +14,7 @@ The `tree-sitter` Python package (a dependency of StrictDoc) has **hardcoded Cla
 
 ```python
 # From tree-sitter Python package source
-extra_compile_args=['-std=c99', '--rtlib=compiler-rt']
+extra_compile_args = ["-std=c99", "--rtlib=compiler-rt"]
 ```
 
 ### Why This Breaks on Alpine

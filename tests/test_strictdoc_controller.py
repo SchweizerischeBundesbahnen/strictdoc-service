@@ -1,14 +1,15 @@
 """Tests for the StrictDoc controller module."""
 
-from http import HTTPStatus
 import tempfile
+from http import HTTPStatus
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
-from app.strictdoc_controller import StrictDocExportException, StrictdocExportParams
 import pytest
-from fastapi.testclient import TestClient
 from fastapi import HTTPException
+from fastapi.testclient import TestClient
+
+from app.strictdoc_controller import StrictDocExportError, StrictdocExportParams
 
 
 @pytest.fixture
@@ -22,8 +23,9 @@ def client() -> TestClient:
 def test_version(monkeypatch: pytest.MonkeyPatch, client: TestClient) -> None:
     """Test the version endpoint returns correct information."""
     # Mock strictdoc.__version__ and platform.python_version dynamically
-    import strictdoc
     import platform
+
+    import strictdoc
 
     expected_strictdoc_version = strictdoc.__version__
     expected_python_version = platform.python_version()
@@ -123,7 +125,7 @@ async def test_run_strictdoc_command_failure() -> None:
         mock_process.returncode = 1
         mock_subprocess.return_value = mock_process
 
-        with pytest.raises(StrictDocExportException) as exc_info:
+        with pytest.raises(StrictDocExportError) as exc_info:
             await run_strictdoc_command(["false"])
 
         assert "StrictDoc command failed" in str(exc_info.value)
@@ -143,7 +145,7 @@ async def test_run_strictdoc_command_stdout_capture() -> None:
         mock_process.returncode = 1
         mock_subprocess.return_value = mock_process
 
-        with pytest.raises(StrictDocExportException) as exc_info:
+        with pytest.raises(StrictDocExportError) as exc_info:
             await run_strictdoc_command(["strictdoc", "export"])
 
         # Verify stdout is captured in the error message
@@ -163,7 +165,7 @@ async def test_run_strictdoc_command_combined_output() -> None:
         mock_process.returncode = 1
         mock_subprocess.return_value = mock_process
 
-        with pytest.raises(StrictDocExportException) as exc_info:
+        with pytest.raises(StrictDocExportError) as exc_info:
             await run_strictdoc_command(["command"])
 
         error_message = str(exc_info.value)
@@ -233,64 +235,63 @@ async def test_missing_sdoc_format_raises() -> None:
 
 @pytest.mark.asyncio
 async def test_strictdoc_command_fails_raises_strictdoc_exception() -> None:
-    """Test StrictDocExportException raised when command fails. Then returns HTTPexception 400"""
+    """Test StrictDocExportError raised when command fails. Then returns HTTPexception 400"""
     from app.strictdoc_controller import _export_documents
 
     params = StrictdocExportParams(content={"0.sdoc": "[DOCUMENT]"}, format="html", file_name="test")
-    with pytest.raises(HTTPException, check=lambda e: e.status_code == 400 and "Export failed:" in e.detail):
-        with patch("asyncio.create_subprocess_exec") as mock_subprocess:
-            mock_process = AsyncMock()
-            mock_process.communicate.return_value = (b"", b"")
-            mock_process.returncode = 1
-            mock_subprocess.return_value = mock_process
+    with pytest.raises(HTTPException, check=lambda e: e.status_code == 400 and "Export failed:" in e.detail), patch("asyncio.create_subprocess_exec") as mock_subprocess:
+        mock_process = AsyncMock()
+        mock_process.communicate.return_value = (b"", b"")
+        mock_process.returncode = 1
+        mock_subprocess.return_value = mock_process
 
-            await _export_documents(params, "test")
+        await _export_documents(params, "test")
 
 
 @pytest.mark.asyncio
 async def test_no_file_found_fails_raises_bad_request() -> None:
-    """Test StrictDocExportException raised when command fails. Then returns HTTPexception 400"""
+    """Test StrictDocExportError raised when command fails. Then returns HTTPexception 400"""
     from app.strictdoc_controller import _export_documents
 
     params = StrictdocExportParams(content={"0.sdoc": "[DOCUMENT]"}, format="reqif-sdoc", file_name="test")
-    with pytest.raises(HTTPException, check=lambda e: e.status_code == 400 and "No zip file found" in e.detail):
-        with (
-            patch(
-                "asyncio.create_subprocess_exec",
-            ) as mock_subprocess,
-            patch("app.strictdoc_controller.find_exported_file") as find_file_mock,
-        ):
-            mock_process = AsyncMock()
-            mock_process.communicate.return_value = (b"", b"")
-            mock_process.returncode = 0
-            mock_subprocess.return_value = mock_process
+    with (
+        pytest.raises(HTTPException, check=lambda e: e.status_code == 400 and "No zip file found" in e.detail),
+        patch(
+            "asyncio.create_subprocess_exec",
+        ) as mock_subprocess,
+        patch("app.strictdoc_controller.find_exported_file") as find_file_mock,
+    ):
+        mock_process = AsyncMock()
+        mock_process.communicate.return_value = (b"", b"")
+        mock_process.returncode = 0
+        mock_subprocess.return_value = mock_process
 
-            find_file_mock.side_effect = HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail="No zip file found in output after export")
+        find_file_mock.side_effect = HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail="No zip file found in output after export")
 
-            await _export_documents(params, "test")
+        await _export_documents(params, "test")
 
 
 @pytest.mark.asyncio
 async def test_unforeseen_exception_raised_raises_500() -> None:
-    """Test StrictDocExportException raised when command fails. Then returns HTTPexception 400"""
+    """Test StrictDocExportError raised when command fails. Then returns HTTPexception 400"""
     from app.strictdoc_controller import _export_documents
 
     params = StrictdocExportParams(content={"0.sdoc": "[DOCUMENT]"}, format="html", file_name="test")
-    with pytest.raises(HTTPException, check=lambda e: e.status_code == 500 and "Export failed:" in e.detail):
-        with (
-            patch(
-                "asyncio.create_subprocess_exec",
-            ) as mock_subprocess,
-            patch("app.strictdoc_controller._build_single_file_response") as build_response_mock,
-        ):
-            mock_process = AsyncMock()
-            mock_process.communicate.return_value = (b"", b"")
-            mock_process.returncode = 0
-            mock_subprocess.return_value = mock_process
+    with (
+        pytest.raises(HTTPException, check=lambda e: e.status_code == 500 and "Export failed:" in e.detail),
+        patch(
+            "asyncio.create_subprocess_exec",
+        ) as mock_subprocess,
+        patch("app.strictdoc_controller._build_single_file_response") as build_response_mock,
+    ):
+        mock_process = AsyncMock()
+        mock_process.communicate.return_value = (b"", b"")
+        mock_process.returncode = 0
+        mock_subprocess.return_value = mock_process
 
-            build_response_mock.side_effect = ValueError("I am an error")
+        build_response_mock.side_effect = ValueError("I am an error")
 
-            await _export_documents(params, "test")
+        await _export_documents(params, "test")
 
 
 def test_validation_exception_handler_format_error(client: TestClient) -> None:
@@ -384,12 +385,11 @@ class TestControllerIntegration:
             "spdx",
         ]
         for fmt in expected_formats:
-            if fmt == "pdf":
-                fmt = "html2pdf"  # PDF is exported as html2pdf
-            assert fmt in EXPORT_FORMATS or fmt == "pdf"
+            expected = "html2pdf" if fmt == "pdf" else fmt  # PDF is exported as html2pdf
+            assert expected in EXPORT_FORMATS
 
         # Verify each format has required keys
-        for fmt, config in EXPORT_FORMATS.items():
+        for config in EXPORT_FORMATS.values():
             assert "extension" in config
             assert "mime_type" in config
             assert isinstance(config["extension"], str)
@@ -397,9 +397,10 @@ class TestControllerIntegration:
 
     def test_sanitization_integration(self) -> None:
         """Test that sanitization functions are properly integrated."""
-        from app.strictdoc_controller import app
-        from app.sanitization import sanitize_for_logging
         from pathvalidate import sanitize_filename
+
+        from app.sanitization import sanitize_for_logging
+        from app.strictdoc_controller import app
 
         # Test that functions are available and working
         assert sanitize_filename("../test.txt") == "..test.txt"
@@ -413,8 +414,9 @@ class TestControllerIntegration:
 @pytest.mark.asyncio
 async def test_path_validation_with_invalid_export_file() -> None:
     """Test that export path validation correctly prevents path traversal attacks."""
-    from app.strictdoc_controller import export_documents, StrictdocExportParams
     from http import HTTPStatus
+
+    from app.strictdoc_controller import StrictdocExportParams, export_documents
 
     # Return a path that is definitely outside the output directory
     malicious_path = Path("/etc/passwd")
@@ -434,8 +436,9 @@ async def test_path_validation_with_invalid_export_file() -> None:
 
 def test_path_validation_with_invalid_destination_path() -> None:
     """Test that destination path validation correctly prevents path traversal attacks."""
-    from app.strictdoc_controller import validate_export_paths
     from http import HTTPStatus
+
+    from app.strictdoc_controller import validate_export_paths
 
     with tempfile.TemporaryDirectory() as temp_dir:
         temp_dir_path = Path(temp_dir).resolve()
@@ -458,7 +461,7 @@ def test_path_validation_with_invalid_destination_path() -> None:
 @pytest.mark.asyncio
 async def test_sanitize_filename_is_called() -> None:
     """Test that sanitize_filename is called for path components."""
-    from app.strictdoc_controller import export_documents, StrictdocExportParams
+    from app.strictdoc_controller import StrictdocExportParams, export_documents
 
     with (
         patch("app.strictdoc_controller.export_bulk_to_format"),
@@ -487,7 +490,7 @@ async def test_sanitize_filename_is_called() -> None:
 @pytest.mark.asyncio
 async def test_successful_validation_with_safe_paths() -> None:
     """Test that path validation succeeds with safe paths."""
-    from app.strictdoc_controller import export_documents, StrictdocExportParams
+    from app.strictdoc_controller import StrictdocExportParams, export_documents
 
     with tempfile.TemporaryDirectory() as temp_dir:
         temp_dir_path = Path(temp_dir)
@@ -522,7 +525,7 @@ async def test_successful_validation_with_safe_paths() -> None:
 @pytest.mark.asyncio
 async def test_path_normalization() -> None:
     """Test that paths are properly normalized and validated."""
-    from app.strictdoc_controller import export_documents, StrictdocExportParams
+    from app.strictdoc_controller import StrictdocExportParams, export_documents
 
     with tempfile.TemporaryDirectory() as temp_dir:
         temp_dir_path = Path(temp_dir)

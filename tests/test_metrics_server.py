@@ -90,20 +90,19 @@ class TestMetricsServer:
     @pytest.mark.asyncio
     async def test_server_lifecycle(self):
         """Test server start and stop lifecycle."""
-        with patch("app.metrics_server.METRICS_SERVER_ENABLED", True):
-            with patch("uvicorn.Server") as mock_server_class:
-                mock_server = AsyncMock()
-                mock_server_class.return_value = mock_server
+        with patch("app.metrics_server.METRICS_SERVER_ENABLED", True), patch("uvicorn.Server") as mock_server_class:
+            mock_server = AsyncMock()
+            mock_server_class.return_value = mock_server
 
-                server = app.metrics_server.MetricsServer(port=19183)
+            server = app.metrics_server.MetricsServer(port=19183)
 
-                # Start server
-                await server.start()
-                assert server._task is not None
+            # Start server
+            await server.start()
+            assert server._task is not None
 
-                # Stop server
-                await server.stop()
-                assert server._task is None
+            # Stop server
+            await server.stop()
+            assert server._task is None
 
 
 class TestMetricsServerConfiguration:
