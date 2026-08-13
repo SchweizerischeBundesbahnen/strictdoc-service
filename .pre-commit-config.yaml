@@ -61,7 +61,16 @@ repos:
         exclude: (^tests/)
         args: [--config-file, pyproject.toml]
         require_serial: true  # Serial processing is required for mypy (better performance and error reporting)
-        pass_filenames: false  # Don't pass individual files, use the specified path
+  - repo: local
+    hooks:
+      # Custom code style linter (PSP001-PSP005)
+      - id: python-sbb-polarion-linter
+        name: python-sbb-polarion code style linter
+        entry: uv run python -m python_sbb_polarion.linter
+        language: system
+        types: [python]
+        pass_filenames: false
+        files: ^python_sbb_polarion/
   - repo: local
     hooks:
       - id: uv-lock
@@ -70,7 +79,7 @@ repos:
         language: system
         pass_filenames: false
         files: ^(pyproject\.toml|uv\.lock)$
-  - repo: https://github.com/gitleaks/gitleaks
+  - repo: https://github.com/zricethezav/gitleaks
     rev: v8.30.1
     hooks:
       - id: gitleaks
@@ -83,6 +92,10 @@ repos:
     rev: v4.17.0
     hooks:
       - id: commitizen
+  - repo: https://github.com/hadolint/hadolint
+    rev: v2.15.1
+    hooks:
+      - id: hadolint
   - repo: https://github.com/woodruffw/zizmor-pre-commit
     rev: v1.29.0
     hooks:
