@@ -61,6 +61,7 @@ repos:
         exclude: (^tests/)
         args: [--config-file, pyproject.toml]
         require_serial: true  # Serial processing is required for mypy (better performance and error reporting)
+        pass_filenames: false  # Don't pass individual files, use the specified path
   - repo: local
     hooks:
       - id: uv-lock
@@ -69,7 +70,7 @@ repos:
         language: system
         pass_filenames: false
         files: ^(pyproject\.toml|uv\.lock)$
-  - repo: https://github.com/zricethezav/gitleaks
+  - repo: https://github.com/gitleaks/gitleaks
     rev: v8.30.1
     hooks:
       - id: gitleaks
@@ -82,10 +83,6 @@ repos:
     rev: v4.17.0
     hooks:
       - id: commitizen
-  - repo: https://github.com/hadolint/hadolint
-    rev: v2.15.1
-    hooks:
-      - id: hadolint
   - repo: https://github.com/woodruffw/zizmor-pre-commit
     rev: v1.29.0
     hooks:
