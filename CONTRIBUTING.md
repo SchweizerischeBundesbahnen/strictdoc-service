@@ -117,7 +117,7 @@ Before you submit your Pull Request (PR) consider the following guidelines:
   The PR title and message should as well conform to the [commit message conventions](#commit-message-guidelines).
 
 ### <a id="commit-message-guidelines"></a>Commit Message Guidelines
-This project uses [Conventional Commits](https://www.conventionalcommits.org/) to generate the Changelog using the [Release Please GitHub action](.github/workflows/release-please.yml).
+This project uses [Conventional Commits](https://www.conventionalcommits.org/) to generate the Changelog using the [Release Please GitHub action](.github/workflows/ci.yml).
 For comprehensive information, please consult the [Release Please documentation](https://github.com/googleapis/release-please).
 
 ### <a id="coding-rules"></a>Coding Rules

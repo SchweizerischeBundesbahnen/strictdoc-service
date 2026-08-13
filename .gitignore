@@ -177,11 +177,7 @@ pyrightconfig.json
 
 # End of https://www.toptal.com/developers/gitignore/api/python
 # Additonal not included in Python.gitignore
-/.idea/
-/.vscode/
-/.claude/
+.idea/
+.vscode/
 junittest.xml
-/.history/
-test-*
-*db/
-*.sarif
+.history/
