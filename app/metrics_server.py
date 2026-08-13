@@ -90,7 +90,8 @@ class MetricsServer:
 
         config = uvicorn.Config(
             metrics_app,
-            host="0.0.0.0",  # noqa: S104 - Intentional binding for container environments
+            # Intentional binding for container environments.
+            host="0.0.0.0",  # noqa: S104
             port=self.port,
             log_level="warning",
         )
