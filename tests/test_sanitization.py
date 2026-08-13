@@ -4,8 +4,8 @@ import pytest
 from pathvalidate import sanitize_filename
 
 from app.sanitization import (
-    sanitize_for_logging,
     normalize_line_endings,
+    sanitize_for_logging,
 )
 
 
