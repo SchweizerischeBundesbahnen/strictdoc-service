@@ -1171,7 +1171,7 @@ wheels = [
 
 [[package]]
 name = "reqif"
-version = "0.0.53"
+version = "0.1.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "jinja2" },
@@ -1179,9 +1179,9 @@ dependencies = [
     { name = "openpyxl" },
     { name = "xmlschema" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/de/e4/8a58ad8808041907ffc967435b7d82a6ba9850231d76564709a98a8f4102/reqif-0.0.53.tar.gz", hash = "sha256:7ec324b267bdafdaacb64e3fafe4f5c00586f678329d40b1939f71b413371834", size = 52370, upload-time = "2026-07-26T20:17:19.26Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/dc/83/3d20cc6a37b514e0d43153b10686248af45786b33da1aa5a37bd6b754f7d/reqif-0.1.0.tar.gz", hash = "sha256:419e8fb838fdb1c0cd6b79ae8c0fb06c9c01dca78690e7e6bae80bf8878d3ca5", size = 55239, upload-time = "2026-08-11T20:11:10.386Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/eb/2e/97b523fce8e79c049e92389c225cc68496db6d918d6cb8e9dd857a801ead/reqif-0.0.53-py3-none-any.whl", hash = "sha256:25cb49353c92e5a21a28857771025a45d77c737303f486f956894e172a5f3bd9", size = 100562, upload-time = "2026-07-26T20:17:17.95Z" },
+    { url = "https://files.pythonhosted.org/packages/37/d6/4e41440e0c7b32bcd659bfdf66e92af889210ba371c35668eb01f955343d/reqif-0.1.0-py3-none-any.whl", hash = "sha256:c3af000d745e107c3d409535acc54274f469522385e6bb3923f5d3918219a189", size = 94886, upload-time = "2026-08-11T20:11:09.149Z" },
 ]
 
 [[package]]
@@ -1329,7 +1329,7 @@ wheels = [
 
 [[package]]
 name = "strictdoc"
-version = "0.27.1"
+version = "0.28.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "beautifulsoup4" },
@@ -1364,9 +1364,9 @@ dependencies = [
     { name = "xlrd" },
     { name = "xlsxwriter" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/70/24/25518ee8c7b8705205281add25fd7949be5339794abf0902c44bb22a5fa8/strictdoc-0.27.1.tar.gz", hash = "sha256:cfbce1d7ec37287e4039dafcfff14683dcb63e14c7bd32ce70fe081a4a5b52ec", size = 5902123, upload-time = "2026-07-26T20:09:20.224Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/40/77/2025977389fb0c24f9df4a25a3d90649f37d096316d7b98909bc7e7741c1/strictdoc-0.28.0.tar.gz", hash = "sha256:29d0622dc75bd965f20fb7a9a041a98d04dbe05bfa653e023209600e13431654", size = 5931174, upload-time = "2026-08-11T21:27:41.485Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/5c/c4/40c54d739ddf61eed7b479a99fa5e36d6b34b9a631554f8ebb60834a644b/strictdoc-0.27.1-py3-none-any.whl", hash = "sha256:1e7d6ffe2d70bff177613bb70e979b85f72ed61c46338771ed10bef43e73636f", size = 6213980, upload-time = "2026-07-26T20:09:18.418Z" },
+    { url = "https://files.pythonhosted.org/packages/f6/46/8fa8313915f8a39cbb31c49fcff219c6b2b393780582d50d21eb009c0eae/strictdoc-0.28.0-py3-none-any.whl", hash = "sha256:afe28487dc14c7da4cb8e35a0f475f478477565f64505316a812d4699a345855", size = 6236414, upload-time = "2026-08-11T21:27:39.258Z" },
 ]
 
 [[package]]
@@ -1406,7 +1406,7 @@ requires-dist = [
     { name = "pathvalidate", specifier = "==3.3.1" },
     { name = "prometheus-client", specifier = "==0.26.0" },
     { name = "prometheus-fastapi-instrumentator", specifier = "==8.1.0" },
-    { name = "strictdoc", specifier = "==0.27.1" },
+    { name = "strictdoc", specifier = "==0.28.0" },
     { name = "urllib3", specifier = "==2.7.0" },
     { name = "uvicorn", specifier = "==0.52.1" },
 ]
