@@ -24,7 +24,7 @@ from pydantic import BaseModel, Field
 from starlette.background import BackgroundTask
 
 # Import StrictDoc version directly
-from strictdoc import __version__ as strictdoc_version  # type: ignore[import]
+from strictdoc import __version__ as strictdoc_version  # type: ignore[import-untyped]
 
 from app.constants import EXPORT_FORMATS
 from app.metrics_server import METRICS_SERVER_ENABLED, MetricsServer
