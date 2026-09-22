@@ -15,7 +15,6 @@ from importlib import metadata
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-# Import StrictDoc version directly
 import uvicorn
 from fastapi import FastAPI, HTTPException
 from fastapi.exceptions import RequestValidationError
