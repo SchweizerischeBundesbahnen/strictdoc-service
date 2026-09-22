@@ -29,23 +29,21 @@ def test_version(monkeypatch: pytest.MonkeyPatch, client: TestClient) -> None:
     expected_strictdoc_version = metadata.version("strictdoc")
     expected_python_version = platform.python_version()
 
-    with patch("importlib.metadata.version") as mock_version:
-        mock_version.return_value = expected_strictdoc_version
-        monkeypatch.setattr("platform.python_version", lambda: expected_python_version)
-        monkeypatch.setenv("STRICTDOC_SERVICE_VERSION", "test1")
-        monkeypatch.setenv("STRICTDOC_SERVICE_BUILD_TIMESTAMP", "test2")
+    monkeypatch.setattr("platform.python_version", lambda: expected_python_version)
+    monkeypatch.setenv("STRICTDOC_SERVICE_VERSION", "test1")
+    monkeypatch.setenv("STRICTDOC_SERVICE_BUILD_TIMESTAMP", "test2")
 
-        # Make the request
-        response = client.get("/version")
+    # Make the request
+    response = client.get("/version")
 
-        # Verify the response
-        assert response.status_code == 200
-        result = response.json()
-        assert expected_python_version[:4] in result["python"]
-        assert result["strictdoc"] == expected_strictdoc_version
-        assert "strictdoc_service" in result
-        assert "timestamp" in result
-        assert "platform" in result
+    # Verify the response
+    assert response.status_code == 200
+    result = response.json()
+    assert expected_python_version[:4] in result["python"]
+    assert result["strictdoc"] == expected_strictdoc_version
+    assert "strictdoc_service" in result
+    assert "timestamp" in result
+    assert "platform" in result
 
 
 def test_find_exported_file_success() -> None:
