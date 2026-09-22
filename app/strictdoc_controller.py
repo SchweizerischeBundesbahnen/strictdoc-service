@@ -226,6 +226,14 @@ async def get_version() -> VersionInfo:
     return __get_version()
 
 
+def __version_to_headers(version_info: VersionInfo) -> dict[str, str]:
+    return {__version_key_to_header_key(key): value for (key, value) in version_info.model_dump().items()}
+
+
+def __version_key_to_header_key(key: str) -> str:
+    return f"X-{key.replace('_', ' ').title().replace(' ', '-')}"
+
+
 async def run_strictdoc_command(cmd: list[str]) -> None:
     """Run a StrictDoc command asynchronously.
 
@@ -388,7 +396,7 @@ def _build_single_file_response(
     logger.info("Exported single %s file to %s", sanitize_for_logging(export_format), sanitize_for_logging(str(persistent_temp_file)))
     observe_response_body_size(persistent_temp_file.stat().st_size)
 
-    return FileResponse(path=str(persistent_temp_file), media_type=mime_type, filename=secure_filename, background=BackgroundTask(get_cleanup_persistent_temp_file(persistent_temp_file)), headers=__get_version().model_dump())
+    return FileResponse(path=str(persistent_temp_file), media_type=mime_type, filename=secure_filename, background=BackgroundTask(get_cleanup_persistent_temp_file(persistent_temp_file)), headers=__version_to_headers(__get_version()))
 
 
 def _build_bulk_zip_response(
@@ -424,7 +432,9 @@ def _build_bulk_zip_response(
     logger.info("Exported bulk %s zip to %s", sanitize_for_logging(export_format), sanitize_for_logging(str(persistent_temp_file)))
     observe_response_body_size(persistent_temp_file.stat().st_size)
 
-    return FileResponse(path=str(persistent_temp_file), media_type="application/zip", filename=secure_filename, background=BackgroundTask(get_cleanup_persistent_temp_file(persistent_temp_file)), headers=__get_version().model_dump())
+    return FileResponse(
+        path=str(persistent_temp_file), media_type="application/zip", filename=secure_filename, background=BackgroundTask(get_cleanup_persistent_temp_file(persistent_temp_file)), headers=__version_to_headers(__get_version())
+    )
 
 
 def check_sdoc_content(content: dict[str, str], export_format: str, metrics: StrictDocMetrics) -> None:

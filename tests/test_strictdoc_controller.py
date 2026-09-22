@@ -10,7 +10,7 @@ import pytest
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
-from app.strictdoc_controller import StrictDocExportError, StrictdocExportParams
+from app.strictdoc_controller import StrictDocExportError, StrictdocExportParams, __version_key_to_header_key
 
 
 @pytest.fixture
@@ -548,3 +548,11 @@ async def test_path_normalization() -> None:
 
             mock_copy.assert_called_once()
             mock_response.assert_called_once()
+
+
+def test_version_key_to_header_key() -> None:
+    """Test that version_key_to_header_key outputs header keys of the form X-Head-Er"""
+    assert __version_key_to_header_key("abc") == "X-Abc"
+    assert __version_key_to_header_key("a b c") == "X-A-B-C"
+    assert __version_key_to_header_key("a_bc d") == "X-A-Bc-D"
+    assert __version_key_to_header_key("strictdoc_version") == "X-Strictdoc-Version"
