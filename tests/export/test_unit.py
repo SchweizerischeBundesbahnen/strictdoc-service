@@ -8,6 +8,8 @@ from fastapi.responses import FileResponse
 from fastapi.testclient import TestClient
 from pytest_mock import MockFixture
 
+from app.strictdoc_controller import __version_key_to_header_key
+
 
 @pytest.mark.parametrize(
     ("export_format", "mime_type", "file_extension", "content"),
@@ -207,3 +209,56 @@ def test_multi_doc_filename_collision_rejected(
 
     assert response.status_code == HTTPStatus.BAD_REQUEST
     assert "Multi-export filename collision" in response.text
+
+
+def test_single_doc_export_includes_version_headers(
+    client: TestClient,
+    sample_sdoc: str,
+    mocker: MockFixture,
+) -> None:
+    """Test that a single-document export response includes version info headers."""
+    mocker.patch(
+        "app.strictdoc_controller.export_bulk_to_format",
+        return_value=None,
+    )
+
+    expected_version = client.get("/version").json()
+
+    response = client.post(
+        "/export",
+        json={"content": {"doc.sdoc": sample_sdoc}, "format": "html", "file_name": "test-export"},
+    )
+
+    assert response.status_code == HTTPStatus.OK
+    for key, value in expected_version.items():
+        assert response.headers[__version_key_to_header_key(key)] == value
+
+
+def test_multi_doc_export_includes_version_headers(
+    client: TestClient,
+    sample_sdoc: str,
+    mocker: MockFixture,
+) -> None:
+    """Test that a bulk (multi-document) export response includes version info headers."""
+    mocker.patch(
+        "app.strictdoc_controller.export_bulk_to_format",
+        return_value=None,
+    )
+
+    expected_version = client.get("/version").json()
+
+    response = client.post(
+        "/export",
+        json={
+            "content": {
+                "doc_a.sdoc": sample_sdoc,
+                "doc_b.sdoc": sample_sdoc,
+            },
+            "format": "sdoc",
+            "file_name": "test-multi-export",
+        },
+    )
+
+    assert response.status_code == HTTPStatus.OK
+    for key, value in expected_version.items():
+        assert response.headers[__version_key_to_header_key(key)] == value

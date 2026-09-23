@@ -63,16 +63,6 @@ repos:
         require_serial: true  # Serial processing is required for mypy (better performance and error reporting)
   - repo: local
     hooks:
-      # Custom code style linter (PSP001-PSP005)
-      - id: python-sbb-polarion-linter
-        name: python-sbb-polarion code style linter
-        entry: uv run python -m python_sbb_polarion.linter
-        language: system
-        types: [python]
-        pass_filenames: false
-        files: ^python_sbb_polarion/
-  - repo: local
-    hooks:
       - id: uv-lock
         name: uv-lock
         entry: uv lock --check
@@ -89,7 +79,7 @@ repos:
       - id: check-git-config-user-email
         args: [--templates, ^\S+\.\S+@sbb\.ch$]
   - repo: https://github.com/commitizen-tools/commitizen
-    rev: v4.17.0
+    rev: v4.18.1
     hooks:
       - id: commitizen
   - repo: https://github.com/hadolint/hadolint
@@ -97,7 +87,7 @@ repos:
     hooks:
       - id: hadolint
   - repo: https://github.com/woodruffw/zizmor-pre-commit
-    rev: v1.29.0
+    rev: v1.30.1
     hooks:
       - id: zizmor
   - repo: https://github.com/rhysd/actionlint

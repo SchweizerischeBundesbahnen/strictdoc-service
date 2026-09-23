@@ -11,6 +11,7 @@ import time
 from collections.abc import Awaitable, Callable
 from contextlib import asynccontextmanager
 from http import HTTPStatus
+from importlib import metadata
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -22,9 +23,6 @@ from pathvalidate import sanitize_filename
 from prometheus_fastapi_instrumentator import Instrumentator
 from pydantic import BaseModel, Field
 from starlette.background import BackgroundTask
-
-# Import StrictDoc version directly
-from strictdoc import __version__ as strictdoc_version  # type: ignore[import-untyped]
 
 from app.constants import EXPORT_FORMATS
 from app.metrics_server import METRICS_SERVER_ENABLED, MetricsServer
@@ -201,8 +199,7 @@ async def log_requests(request: Request, call_next: Callable[[Request], Awaitabl
     return response
 
 
-@app.get("/version")
-async def get_version() -> VersionInfo:
+def __get_version() -> VersionInfo:
     """Get version information about the service and its dependencies.
 
     Returns:
@@ -213,8 +210,28 @@ async def get_version() -> VersionInfo:
     timestamp = os.getenv("STRICTDOC_SERVICE_BUILD_TIMESTAMP", "")
     python_version = sys.version.split()[0]
     platform_info = platform.platform()
+    strictdoc_version = metadata.version("strictdoc")
 
     return VersionInfo(python=python_version, strictdoc=strictdoc_version, platform=platform_info, timestamp=timestamp, strictdoc_service=service_version)
+
+
+@app.get("/version")
+async def get_version() -> VersionInfo:
+    """Get version endpoint
+
+    Returns:
+        VersionInfo: Version information about Python, StrictDoc, and the platform.
+
+    """
+    return __get_version()
+
+
+def __version_to_headers(version_info: VersionInfo) -> dict[str, str]:
+    return {__version_key_to_header_key(key): value for (key, value) in version_info.model_dump().items()}
+
+
+def __version_key_to_header_key(key: str) -> str:
+    return f"X-{key.replace('_', ' ').title().replace(' ', '-')}"
 
 
 async def run_strictdoc_command(cmd: list[str]) -> None:
@@ -379,7 +396,7 @@ def _build_single_file_response(
     logger.info("Exported single %s file to %s", sanitize_for_logging(export_format), sanitize_for_logging(str(persistent_temp_file)))
     observe_response_body_size(persistent_temp_file.stat().st_size)
 
-    return FileResponse(path=str(persistent_temp_file), media_type=mime_type, filename=secure_filename, background=BackgroundTask(get_cleanup_persistent_temp_file(persistent_temp_file)))
+    return FileResponse(path=str(persistent_temp_file), media_type=mime_type, filename=secure_filename, background=BackgroundTask(get_cleanup_persistent_temp_file(persistent_temp_file)), headers=__version_to_headers(__get_version()))
 
 
 def _build_bulk_zip_response(
@@ -415,7 +432,9 @@ def _build_bulk_zip_response(
     logger.info("Exported bulk %s zip to %s", sanitize_for_logging(export_format), sanitize_for_logging(str(persistent_temp_file)))
     observe_response_body_size(persistent_temp_file.stat().st_size)
 
-    return FileResponse(path=str(persistent_temp_file), media_type="application/zip", filename=secure_filename, background=BackgroundTask(get_cleanup_persistent_temp_file(persistent_temp_file)))
+    return FileResponse(
+        path=str(persistent_temp_file), media_type="application/zip", filename=secure_filename, background=BackgroundTask(get_cleanup_persistent_temp_file(persistent_temp_file)), headers=__version_to_headers(__get_version())
+    )
 
 
 def check_sdoc_content(content: dict[str, str], export_format: str, metrics: StrictDocMetrics) -> None:
