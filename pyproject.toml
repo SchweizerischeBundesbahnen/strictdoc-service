@@ -27,7 +27,7 @@ Repository = "https://github.com/SchweizerischeBundesbahnen/strictdoc-service"
 dev = [
     "pre-commit==4.6.2",
     "ruff==0.16.10",
-    "mypy==2.3.1",
+    "mypy==2.4.0",
 ]
 test = [
     "tox==4.64.7",
