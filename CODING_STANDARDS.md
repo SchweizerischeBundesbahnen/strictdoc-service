@@ -46,15 +46,11 @@ Please refer to the following coding standards guidelines for detailed recommend
 
 ### Linters
 
-We recommend using the following linters to enforce coding standards and best practices in your Python code:
+This project uses the following tools to enforce coding standards:
 
-1. [flake8](https://flake8.pycqa.org/en/latest/) - Flake8 combines multiple linters including pycodestyle, pyflakes, and McCabe complexity checker to analyze your code against the PEP 8 style guide and detect various errors and inconsistencies.
+1. [Ruff](https://docs.astral.sh/ruff/) - Fast Python linter and formatter that replaces flake8, pylint, isort, pyupgrade, and black. Configured with `ALL` rules enabled and intentional ignores (see `pyproject.toml`).
 
-2. [pylint](https://pylint.pycqa.org/) - Pylint analyzes Python code for errors, potential bugs, and code smells, providing detailed reports with suggestions for improvement.
-
-3. [black](https://black.readthedocs.io/en/stable/) - Black is an opinionated code formatter for Python that automatically reformats your code to ensure consistent style adherence.
-
-4. [mypy](http://mypy-lang.org/) - Mypy is a static type checker for Python that helps detect and prevent type-related errors using optional static typing.
+2. [mypy](http://mypy-lang.org/) - Static type checker for Python. Strict mode is enabled — all code must have complete type annotations.
 
 
 ## Docker Best Practices and Guidelines
