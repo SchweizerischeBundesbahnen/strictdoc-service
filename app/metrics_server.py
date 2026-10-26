@@ -128,7 +128,7 @@ class MetricsServer:
                 # Force cancel if graceful shutdown takes too long
                 self._task.cancel()
                 with contextlib.suppress(asyncio.CancelledError):
-                    _ = await self._task  # type: ignore[func-returns-value]
+                    _ = await self._task
             self._task = None
             self._server = None
             logger.info("Metrics server stopped")
