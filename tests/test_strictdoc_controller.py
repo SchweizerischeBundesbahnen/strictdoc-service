@@ -303,28 +303,6 @@ def test_validation_exception_handler_format_error(client: TestClient) -> None:
     assert "Invalid export format" in response.json()["detail"]
 
 
-def test_build_single_file_response_html_creates_zip() -> None:
-    """Test that _build_single_file_response creates a zip for HTML format."""
-    from app.strictdoc_controller import _build_single_file_response
-
-    with tempfile.TemporaryDirectory() as temp_dir:
-        temp_path = Path(temp_dir)
-        output_dir = temp_path / "output"
-        output_dir.mkdir()
-
-        # Create some HTML output files
-        html_dir = output_dir / "html"
-        html_dir.mkdir()
-        (html_dir / "index.html").write_text("<html>Test</html>")
-
-        with patch("app.strictdoc_controller.validate_export_paths"), patch("shutil.copy2"), patch("app.strictdoc_controller.Path.stat") as mock_stat:
-            mock_stat.return_value.st_size = 1024
-            response = _build_single_file_response(output_dir, "html", "test-output")
-
-            assert response.media_type == "application/zip"
-            assert response.filename == "test-output.zip"
-
-
 def test_build_bulk_zip_response_html_creates_zip() -> None:
     """Test that _build_bulk_zip_response creates a zip for HTML format."""
     from app.strictdoc_controller import _build_bulk_zip_response

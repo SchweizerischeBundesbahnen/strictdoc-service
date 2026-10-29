@@ -359,46 +359,6 @@ def get_cleanup_persistent_temp_file(persistent_temp_file: Path) -> Callable[[],
     return cleanup_persistent_temp_file
 
 
-def _build_single_file_response(
-    output_dir: Path,
-    export_format: str,
-    sanitized_file_name: str,
-) -> FileResponse:
-    """Build a FileResponse for a single exported document.
-
-    Locates the exported file in output_dir, copies it to a persistent temp path,
-    and returns a FileResponse with the correct MIME type for the format.
-
-    Args:
-        output_dir: Directory containing the export output.
-        export_format: The export format key (e.g. "json", "html").
-        sanitized_file_name: Sanitized base name for the response file.
-
-    Returns:
-        FileResponse: Response with the exported file.
-    """
-    extension = EXPORT_FORMATS[export_format]["extension"]
-    mime_type = EXPORT_FORMATS[export_format]["mime_type"]
-
-    if export_format == "html":
-        zip_base_name = output_dir.parent / "output"
-        export_file = Path(f"{zip_base_name}.zip")
-        shutil.make_archive(str(zip_base_name), "zip", output_dir)
-    else:
-        export_file = find_exported_file(output_dir, export_format, extension)
-
-    secure_filename = f"{sanitized_file_name}.{extension}"
-    temp_dir_obj = Path(tempfile.gettempdir())
-    persistent_temp_file = temp_dir_obj / secure_filename
-    persistent_temp_file.parent.mkdir(parents=True, exist_ok=True)
-    validate_export_paths(persistent_temp_file, temp_dir_obj.resolve(), export_file, output_dir if export_format != "html" else output_dir.parent)
-    shutil.copy2(export_file, persistent_temp_file)
-    logger.info("Exported single %s file to %s", sanitize_for_logging(export_format), sanitize_for_logging(str(persistent_temp_file)))
-    observe_response_body_size(persistent_temp_file.stat().st_size)
-
-    return FileResponse(path=str(persistent_temp_file), media_type=mime_type, filename=secure_filename, background=BackgroundTask(get_cleanup_persistent_temp_file(persistent_temp_file)), headers=__version_to_headers(__get_version()))
-
-
 def _build_bulk_zip_response(
     temp_dir_path: Path,
     output_dir: Path,
@@ -498,7 +458,7 @@ async def _export_documents(export_params: StrictdocExportParams, sanitized_file
             if (cache_path := (output_dir / "_cache")).exists():
                 shutil.rmtree(cache_path)
 
-            response = _build_single_file_response(output_dir, export_format, sanitized_file_name) if len(export_params.content) == 1 else _build_bulk_zip_response(temp_dir_path, output_dir, export_format, sanitized_file_name)
+            response = _build_bulk_zip_response(temp_dir_path, output_dir, export_format, sanitized_file_name)
             export_completed = True
             return response
 
