@@ -128,7 +128,7 @@ uv run ruff format
 uv run ruff check
 
 # Type checking
-uv run mypy .
+uv run ty check
 
 # Run all linting
 uv run tox -e lint
