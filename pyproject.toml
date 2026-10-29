@@ -10,7 +10,7 @@ readme = "README.md"
 requires-python = ">=3.14,<3.15"
 dependencies = [
     "strictdoc==0.30.4",
-    "fastapi==0.161.1",
+    "fastapi==0.162.0",
     "uvicorn==0.54.0",
     "pathvalidate==3.3.1",
     "prometheus-client==0.26.0",
@@ -36,7 +36,7 @@ test = [
     "docker==7.2.0",
     "pytest==9.1.1",
     "pytest-mock==3.17.0",
-    "pytest-asyncio==1.4.0",
+    "pytest-asyncio==1.4.1",
     "httpx==0.28.1",
     "coverage==7.17.0",
 ]
