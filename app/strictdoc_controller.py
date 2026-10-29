@@ -453,14 +453,13 @@ async def _export_documents(export_params: StrictdocExportParams, sanitized_file
 async def export_documents(export_params: StrictdocExportParams) -> FileResponse:
     """Export one or more StrictDoc documents to the requested format.
 
-    When a single document is provided, returns the file in the requested format.
-    When multiple documents are provided, returns a ZIP archive containing all exported files.
+    Always returns a ZIP archive.
 
     Args:
         export_params: Export parameters including content dict, format, and output filename.
 
     Returns:
-        FileResponse: The exported file or ZIP archive.
+        FileResponse: The exported ZIP archive.
     """
     export_format = export_params.format.lower()
     file_name = export_params.file_name
