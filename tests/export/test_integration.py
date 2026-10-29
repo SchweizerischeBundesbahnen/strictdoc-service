@@ -1,6 +1,7 @@
 """Integration tests for the export functionality using a real Docker container."""
 
 import io
+import json
 import zipfile
 from http import HTTPStatus
 
@@ -21,18 +22,18 @@ def test_version_endpoint(test_parameters: TestParameters) -> None:
 
 
 @pytest.mark.parametrize(
-    ("export_format", "mime_type", "file_extension"),
+    ("export_format", "file_extension"),
     [
-        ("html", "application/zip", ".zip"),
-        ("json", "application/json", ".json"),
-        ("excel", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", ".xlsx"),
-        ("reqif-sdoc", "application/xml", ".reqif"),
-        ("reqifz-sdoc", "application/zip", ".reqifz"),
-        ("rst", "text/x-rst", ".rst"),
-        ("sdoc", "text/plain", ".sdoc"),
+        ("html", ".html"),
+        ("json", ".json"),
+        ("excel", ".xlsx"),
+        ("reqif-sdoc", ".reqif"),
+        ("reqifz-sdoc", ".reqifz"),
+        ("rst", ".rst"),
+        ("sdoc", ".sdoc"),
     ],
 )
-def test_export_formats(test_parameters: TestParameters, sample_sdoc: str, export_format: str, mime_type: str, file_extension: str) -> None:
+def test_export_formats(test_parameters: TestParameters, sample_sdoc: str, export_format: str, file_extension: str) -> None:
     """Test exporting to different formats."""
     response = test_parameters.request_session.post(
         f"{test_parameters.base_url}/export",
@@ -46,31 +47,30 @@ def test_export_formats(test_parameters: TestParameters, sample_sdoc: str, expor
 
     # Only continue validation if the export was successful
     if response.status_code == HTTPStatus.OK:
-        assert mime_type in response.headers["Content-Type"]
+        # Every export format is returned as a ZIP archive
+        assert "application/zip" in response.headers["Content-Type"]
         content_disposition = response.headers.get("Content-Disposition", "")
-        assert f"test-export{file_extension}" in content_disposition
+        assert "test-export.zip" in content_disposition
 
-        # Validate the content based on the format
-        if export_format == "html":
-            # HTML export should be a ZIP file containing index.html
-            content = io.BytesIO(response.content)
-            with zipfile.ZipFile(content) as z:
-                assert any(name.endswith("index.html") for name in z.namelist())
-        elif export_format == "json":
-            # JSON export should be valid JSON
-            content = response.json()
-            assert "DOCUMENTS" in content
-            assert isinstance(content["DOCUMENTS"], list)
-            assert len(content["DOCUMENTS"]) > 0
-            assert "TITLE" in content["DOCUMENTS"][0]
-        elif export_format in {"reqif-sdoc", "reqifz-sdoc"}:
-            # ReqIF/ReqIFZ exports have specific validations
-            if export_format == "reqif-sdoc":
+        with zipfile.ZipFile(io.BytesIO(response.content)) as z:
+            exported_files = [name for name in z.namelist() if name.endswith(file_extension)]
+            assert exported_files, f"No {file_extension} file found in ZIP: {z.namelist()}"
+
+            # Validate the content based on the format
+            if export_format == "html":
+                assert any(name.endswith("index.html") for name in exported_files)
+            elif export_format == "json":
+                content = json.loads(z.read(exported_files[0]))
+                assert "DOCUMENTS" in content
+                assert isinstance(content["DOCUMENTS"], list)
+                assert len(content["DOCUMENTS"]) > 0
+                assert "TITLE" in content["DOCUMENTS"][0]
+            elif export_format == "reqif-sdoc":
                 # ReqIF should be XML
-                assert response.content.startswith(b"<?xml")
-            else:
-                # ReqIFZ should be a ZIP file
-                assert response.content.startswith(b"PK")
+                assert z.read(exported_files[0]).startswith(b"<?xml")
+            elif export_format == "reqifz-sdoc":
+                # ReqIFZ should itself be a ZIP file
+                assert z.read(exported_files[0]).startswith(b"PK")
 
 
 def test_export_pdf(test_parameters: TestParameters, sample_sdoc: str) -> None:
@@ -86,11 +86,14 @@ def test_export_pdf(test_parameters: TestParameters, sample_sdoc: str) -> None:
     assert response.status_code in {HTTPStatus.OK, HTTPStatus.BAD_REQUEST}
 
     if response.status_code == HTTPStatus.OK:
-        assert "application/pdf" in response.headers["Content-Type"]
+        assert "application/zip" in response.headers["Content-Type"]
         content_disposition = response.headers.get("Content-Disposition", "")
-        assert "test-export.pdf" in content_disposition
-        # PDF files should start with "%PDF-"
-        assert response.content.startswith(b"%PDF-")
+        assert "test-export.zip" in content_disposition
+        with zipfile.ZipFile(io.BytesIO(response.content)) as z:
+            pdf_files = [name for name in z.namelist() if name.endswith(".pdf")]
+            assert pdf_files
+            # PDF files should start with "%PDF-"
+            assert z.read(pdf_files[0]).startswith(b"%PDF-")
 
 
 def test_invalid_export_format(test_parameters: TestParameters, sample_sdoc: str) -> None:

@@ -1,10 +1,8 @@
 """Unit tests for the export functionality of StrictDoc service."""
 
 from http import HTTPStatus
-from pathlib import Path
 
 import pytest
-from fastapi.responses import FileResponse
 from fastapi.testclient import TestClient
 from pytest_mock import MockFixture
 
@@ -12,38 +10,19 @@ from app.strictdoc_controller import __version_key_to_header_key
 
 
 @pytest.mark.parametrize(
-    ("export_format", "mime_type", "file_extension", "content"),
-    [
-        ("html", "application/zip", ".zip", b"test content"),
-        ("json", "application/json", ".json", b'{"test": "content"}'),
-        ("excel", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", ".xlsx", b"test content"),
-        ("reqif-sdoc", "application/xml", ".reqif", b"<?xml version='1.0'?>"),
-        ("reqifz-sdoc", "application/zip", ".reqifz", b"PK"),
-        ("rst", "text/x-rst", ".rst", b"test content"),
-        ("sdoc", "text/plain", ".sdoc", b"test content"),
-    ],
+    "export_format",
+    ["html", "json", "excel", "reqif-sdoc", "reqifz-sdoc", "rst", "sdoc", "html2pdf"],
 )
-def test_export_formats(
+def test_export_formats_return_zip(
     client: TestClient,
     sample_sdoc: str,
     export_format: str,
-    mime_type: str,
-    file_extension: str,
-    content: bytes,
     mocker: MockFixture,
-    tmp_path: Path,
 ) -> None:
-    """Test exporting to different formats with proper mocking."""
-    temp_file = tmp_path / f"test-export{file_extension}"
-    temp_file.write_bytes(content)
-
+    """Test that every export format is returned as a ZIP archive."""
     mocker.patch(
-        "app.strictdoc_controller._export_documents",
-        return_value=FileResponse(
-            path=str(temp_file),
-            media_type=mime_type,
-            filename=f"test-export{file_extension}",
-        ),
+        "app.strictdoc_controller.export_bulk_to_format",
+        return_value=None,
     )
 
     response = client.post(
@@ -51,42 +30,10 @@ def test_export_formats(
         json={"content": {"doc.sdoc": sample_sdoc}, "format": export_format, "file_name": "test-export"},
     )
 
-    # Verify the response
     assert response.status_code == HTTPStatus.OK
-    assert mime_type in response.headers["Content-Type"]
+    assert "application/zip" in response.headers["Content-Type"]
     content_disposition = response.headers.get("Content-Disposition", "")
-    assert f'filename="test-export{file_extension}"' in content_disposition
-
-
-def test_export_pdf(client: TestClient, sample_sdoc: str, mocker: MockFixture, tmp_path: Path) -> None:
-    """Test exporting to PDF format (which might be unstable)."""
-    export_format = "html2pdf"
-    mime_type = "application/pdf"
-    file_extension = ".pdf"
-    content = b"%PDF-1.4"  # PDF magic number
-
-    temp_file = tmp_path / f"test-export{file_extension}"
-    temp_file.write_bytes(content)
-
-    mocker.patch(
-        "app.strictdoc_controller._export_documents",
-        return_value=FileResponse(
-            path=str(temp_file),
-            media_type=mime_type,
-            filename=f"test-export{file_extension}",
-        ),
-    )
-
-    response = client.post(
-        "/export",
-        json={"content": {"doc.sdoc": sample_sdoc}, "format": export_format, "file_name": "test-export"},
-    )
-
-    # If successful, verify the response
-    if response.status_code == HTTPStatus.OK:
-        assert mime_type in response.headers["Content-Type"]
-        content_disposition = response.headers.get("Content-Disposition", "")
-        assert f'filename="test-export{file_extension}"' in content_disposition
+    assert 'filename="test-export.zip"' in content_disposition
 
 
 def test_export_pdf_error(client: TestClient, sample_sdoc: str, mocker: MockFixture) -> None:

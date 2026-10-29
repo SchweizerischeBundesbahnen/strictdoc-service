@@ -365,37 +365,25 @@ Content-Type: `application/json`
 2. Using a separate PDF conversion service
 3. Building a custom image with Chromium installed
 
-**Note on HTML Export:** The `html` format returns a ZIP archive containing the full HTML site.
-
-**Note on Multi-Document Export:** When `content` contains more than one document, the response is always a ZIP archive regardless of the requested format.
+**Note:** The response is always a ZIP archive regardless of the requested format or number of exported documents.
 
 ##### Responses
 
 > | HTTP code | Content-Type            | Response                                                   |
 > |-----------|-------------------------|------------------------------------------------------------|
-> | `200`     | Varies by export format | Exported document (single file, or ZIP for HTML/multi-doc) |
+> | `200`     | `application/zip`       | Zip of exported documents                                  |
 > | `400`     | `application/json`      | Invalid request (bad format, missing `[DOCUMENT]`, etc.)   |
 > | `422`     | `application/json`      | Validation error                                           |
 > | `500`     | `application/json`      | Internal server error                                      |
 
 ##### Example cURL
 
-Single document export to ReqIF:
+Multiple documents export:
 
 > ```bash
 > curl -X POST \
 >   -H "Content-Type: application/json" \
->   --data '{"content": {"requirements.sdoc": "[DOCUMENT]\nTITLE: My Requirements\n"}, "format": "reqif-sdoc", "file_name": "requirements"}' \
->   "http://localhost:9083/export" \
->   --output requirements.reqif
-> ```
-
-Multiple documents export (returns ZIP):
-
-> ```bash
-> curl -X POST \
->   -H "Content-Type: application/json" \
->   --data '{"content": {"doc1.sdoc": "[DOCUMENT]\nTITLE: Doc 1\n", "doc2.sdoc": "[DOCUMENT]\nTITLE: Doc 2\n"}, "format": "json", "file_name": "export"}' \
+>   --data '{"content": {"doc1.sdoc": "[DOCUMENT]\nTITLE: Doc 1\n", "doc2.sdoc": "[DOCUMENT]\nTITLE: Doc 2\n"}, "format": "reqif-sdoc", "file_name": "export"}' \
 >   "http://localhost:9083/export" \
 >   --output export.zip
 > ```

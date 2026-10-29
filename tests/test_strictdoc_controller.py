@@ -1,7 +1,6 @@
 """Tests for the StrictDoc controller module."""
 
 import tempfile
-from http import HTTPStatus
 from importlib import metadata
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
@@ -44,53 +43,6 @@ def test_version(monkeypatch: pytest.MonkeyPatch, client: TestClient) -> None:
     assert "strictdoc_service" in result
     assert "timestamp" in result
     assert "platform" in result
-
-
-def test_find_exported_file_success() -> None:
-    """Test that find_exported_file correctly finds exported files."""
-    from app.strictdoc_controller import find_exported_file
-
-    with tempfile.TemporaryDirectory() as temp_dir:
-        temp_path = Path(temp_dir)
-
-        # Create a test file
-        test_file = temp_path / "test.pdf"
-        test_file.write_text("test content")
-
-        # Test finding the file
-        result = find_exported_file(temp_path, "html2pdf", "pdf")
-        assert result == test_file
-
-
-def test_find_exported_file_not_found() -> None:
-    """Test that find_exported_file raises exception when file not found."""
-    from app.strictdoc_controller import find_exported_file
-
-    with tempfile.TemporaryDirectory() as temp_dir:
-        temp_path = Path(temp_dir)
-
-        # Test with no files
-        with pytest.raises(HTTPException) as exc_info:
-            find_exported_file(temp_path, "html2pdf", "pdf")
-
-        assert exc_info.value.status_code == 400
-        assert "No pdf file found" in str(exc_info.value.detail)
-
-
-def test_find_exported_file_special_formats() -> None:
-    """Test find_exported_file with special formats like reqif-sdoc."""
-    from app.strictdoc_controller import find_exported_file
-
-    with tempfile.TemporaryDirectory() as temp_dir:
-        temp_path = Path(temp_dir)
-
-        # Create test file for reqif-sdoc
-        test_file = temp_path / "test.reqif"
-        test_file.write_text("test content")
-
-        # Test finding reqif-sdoc file
-        result = find_exported_file(temp_path, "reqif-sdoc", "reqif")
-        assert result == test_file
 
 
 @pytest.mark.asyncio
@@ -247,29 +199,6 @@ async def test_strictdoc_command_fails_raises_strictdoc_exception() -> None:
 
 
 @pytest.mark.asyncio
-async def test_no_file_found_fails_raises_bad_request() -> None:
-    """Test StrictDocExportError raised when command fails. Then returns HTTPexception 400"""
-    from app.strictdoc_controller import _export_documents
-
-    params = StrictdocExportParams(content={"0.sdoc": "[DOCUMENT]"}, format="reqif-sdoc", file_name="test")
-    with (
-        pytest.raises(HTTPException, check=lambda e: e.status_code == 400 and "No zip file found" in e.detail),
-        patch(
-            "asyncio.create_subprocess_exec",
-        ) as mock_subprocess,
-        patch("app.strictdoc_controller.find_exported_file") as find_file_mock,
-    ):
-        mock_process = AsyncMock()
-        mock_process.communicate.return_value = (b"", b"")
-        mock_process.returncode = 0
-        mock_subprocess.return_value = mock_process
-
-        find_file_mock.side_effect = HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail="No zip file found in output after export")
-
-        await _export_documents(params, "test")
-
-
-@pytest.mark.asyncio
 async def test_unforeseen_exception_raised_raises_500() -> None:
     """Test StrictDocExportError raised when command fails. Then returns HTTPexception 400"""
     from app.strictdoc_controller import _export_documents
@@ -280,7 +209,7 @@ async def test_unforeseen_exception_raised_raises_500() -> None:
         patch(
             "asyncio.create_subprocess_exec",
         ) as mock_subprocess,
-        patch("app.strictdoc_controller._build_single_file_response") as build_response_mock,
+        patch("app.strictdoc_controller._build_bulk_zip_response") as build_response_mock,
     ):
         mock_process = AsyncMock()
         mock_process.communicate.return_value = (b"", b"")
@@ -387,29 +316,6 @@ class TestControllerIntegration:
         assert hasattr(app, "routes")
 
 
-@pytest.mark.asyncio
-async def test_path_validation_with_invalid_export_file() -> None:
-    """Test that export path validation correctly prevents path traversal attacks."""
-    from http import HTTPStatus
-
-    from app.strictdoc_controller import StrictdocExportParams, export_documents
-
-    # Return a path that is definitely outside the output directory
-    malicious_path = Path("/etc/passwd")
-
-    with patch("app.strictdoc_controller.export_bulk_to_format"), patch("app.strictdoc_controller.find_exported_file", return_value=malicious_path), patch("shutil.copy2"), pytest.raises(HTTPException) as excinfo:
-        await export_documents(
-            export_params=StrictdocExportParams(
-                content={"doc.sdoc": "[DOCUMENT]\nTITLE: Test\n"},
-                format="sdoc",
-                file_name="test_document",
-            )
-        )
-
-    assert excinfo.value.status_code in [HTTPStatus.BAD_REQUEST, HTTPStatus.INTERNAL_SERVER_ERROR]
-    assert "Invalid" in excinfo.value.detail
-
-
 def test_path_validation_with_invalid_destination_path() -> None:
     """Test that destination path validation correctly prevents path traversal attacks."""
     from http import HTTPStatus
@@ -441,7 +347,6 @@ async def test_sanitize_filename_is_called() -> None:
 
     with (
         patch("app.strictdoc_controller.export_bulk_to_format"),
-        patch("app.strictdoc_controller.find_exported_file", return_value=Path(tempfile.gettempdir()) / "safe.sdoc"),
         patch("app.strictdoc_controller.validate_export_paths"),
         patch("shutil.copy2"),
         patch("app.strictdoc_controller.FileResponse"),
@@ -468,64 +373,27 @@ async def test_successful_validation_with_safe_paths() -> None:
     """Test that path validation succeeds with safe paths."""
     from app.strictdoc_controller import StrictdocExportParams, export_documents
 
-    with tempfile.TemporaryDirectory() as temp_dir:
-        temp_dir_path = Path(temp_dir)
-        output_file = temp_dir_path / "test.sdoc"
-        # Create the export file so stat() works
-        output_file.write_text("test content")
+    with (
+        patch("app.strictdoc_controller.export_bulk_to_format"),
+        patch("app.strictdoc_controller.validate_export_paths") as mock_validate,
+        patch("shutil.copy2") as mock_copy,
+        patch("app.strictdoc_controller.Path.stat") as mock_stat,
+        patch("app.strictdoc_controller.FileResponse") as mock_response,
+    ):
+        mock_validate.return_value = None
+        mock_stat.return_value.st_size = 1024
 
-        with (
-            patch("app.strictdoc_controller.export_bulk_to_format"),
-            patch("app.strictdoc_controller.find_exported_file", return_value=output_file),
-            patch("app.strictdoc_controller.validate_export_paths") as mock_validate,
-            patch("shutil.copy2") as mock_copy,
-            patch("app.strictdoc_controller.Path.stat") as mock_stat,
-            patch("app.strictdoc_controller.FileResponse") as mock_response,
-        ):
-            mock_validate.return_value = None
-            mock_stat.return_value.st_size = 1024
-
-            await export_documents(
-                export_params=StrictdocExportParams(
-                    content={"doc.sdoc": "[DOCUMENT]\nTITLE: Test\n"},
-                    format="sdoc",
-                    file_name="safe_document",
-                )
+        await export_documents(
+            export_params=StrictdocExportParams(
+                content={"doc.sdoc": "[DOCUMENT]\nTITLE: Test\n"},
+                format="sdoc",
+                file_name="safe_document",
             )
+        )
 
-            mock_validate.assert_called_once()
-            mock_copy.assert_called_once()
-            mock_response.assert_called_once()
-
-
-@pytest.mark.asyncio
-async def test_path_normalization() -> None:
-    """Test that paths are properly normalized and validated."""
-    from app.strictdoc_controller import StrictdocExportParams, export_documents
-
-    with tempfile.TemporaryDirectory() as temp_dir:
-        temp_dir_path = Path(temp_dir)
-        output_file = temp_dir_path / "test.sdoc"
-
-        with (
-            patch("app.strictdoc_controller.export_bulk_to_format"),
-            patch("app.strictdoc_controller.find_exported_file", return_value=output_file),
-            patch("app.strictdoc_controller.validate_export_paths"),
-            patch("shutil.copy2") as mock_copy,
-            patch("app.strictdoc_controller.Path.stat") as mock_stat,
-            patch("app.strictdoc_controller.FileResponse") as mock_response,
-        ):
-            mock_stat.return_value.st_size = 1024
-            await export_documents(
-                export_params=StrictdocExportParams(
-                    content={"doc.sdoc": "[DOCUMENT]\nTITLE: Test\n"},
-                    format="sdoc",
-                    file_name="output_file",
-                )
-            )
-
-            mock_copy.assert_called_once()
-            mock_response.assert_called_once()
+        mock_validate.assert_called_once()
+        mock_copy.assert_called_once()
+        mock_response.assert_called_once()
 
 
 def test_version_key_to_header_key() -> None:

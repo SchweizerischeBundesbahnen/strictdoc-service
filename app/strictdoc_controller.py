@@ -314,40 +314,6 @@ async def export_bulk_to_format(input_dir: Path, output_dir: Path, export_format
         raise RuntimeError(f"Export to {export_format} failed: {e!s}") from e
 
 
-def find_exported_file(output_dir: Path, export_format: str, extension: str) -> Path:
-    """Find the exported file in the output directory.
-
-    Args:
-        output_dir: Directory where exported files are located
-        export_format: The export format name
-        extension: The expected file extension from EXPORT_FORMATS
-
-    Returns:
-        Path: Path to the found exported file
-
-    Raises:
-        HTTPException: If no exported file is found
-
-    """
-    # Handle special cases for file search patterns
-    if export_format in {"reqif-sdoc", "reqifz-sdoc"}:
-        # These formats have different extension patterns from their format names
-        search_pattern = "**/*.reqif" if export_format == "reqif-sdoc" else "**/*.reqifz"
-        exported_files = list(output_dir.glob(search_pattern))
-        if not exported_files:
-            # Try with the extension from EXPORT_FORMATS
-            exported_files = list(output_dir.glob(f"**/*.{extension}"))
-    else:
-        # Use the extension from EXPORT_FORMATS for all formats (including html2pdf -> pdf)
-        exported_files = list(output_dir.glob(f"**/*.{extension}"))
-
-    if not exported_files:
-        raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=f"No {extension} file found in output after export")
-
-    logger.info("Found exported file: %s", exported_files[0])
-    return exported_files[0]
-
-
 def get_cleanup_persistent_temp_file(persistent_temp_file: Path) -> Callable[[], None]:
     def cleanup_persistent_temp_file() -> None:
         try:
