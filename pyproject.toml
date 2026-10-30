@@ -31,7 +31,7 @@ dev = [
 ]
 test = [
     "tox==4.67.2",
-    "tox-uv==1.37.0",
+    "tox-uv==1.37.1",
     # for debug source code for pytest --> see tox.ini section [testenv]
     "docker==7.2.0",
     "pytest==9.1.1",
