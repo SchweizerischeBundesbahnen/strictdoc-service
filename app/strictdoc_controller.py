@@ -14,6 +14,7 @@ from http import HTTPStatus
 from importlib import metadata
 from pathlib import Path
 from typing import TYPE_CHECKING
+from uuid import uuid4
 
 import uvicorn
 from fastapi import FastAPI, HTTPException
@@ -351,7 +352,7 @@ def _build_bulk_zip_response(
 
     secure_filename = f"{sanitized_file_name}.zip"
     temp_dir_obj = Path(tempfile.gettempdir())
-    persistent_temp_file = temp_dir_obj / secure_filename
+    persistent_temp_file = temp_dir_obj / uuid4().hex
     persistent_temp_file.parent.mkdir(parents=True, exist_ok=True)
     validate_export_paths(persistent_temp_file, temp_dir_obj.resolve(), export_file, temp_dir_path)
     shutil.copy2(export_file, persistent_temp_file)
