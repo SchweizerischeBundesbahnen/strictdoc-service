@@ -26,15 +26,15 @@ Repository = "https://github.com/SchweizerischeBundesbahnen/strictdoc-service"
 [dependency-groups]
 dev = [
     "pre-commit==4.7.0",
-    "ruff==0.17.2",
-    "mypy==2.4.0",
+    "ruff==0.17.3",
+    "mypy==2.4.1",
 ]
 test = [
-    "tox==4.67.1",
-    "tox-uv==1.37.0",
+    "tox==4.67.4",
+    "tox-uv==1.37.2",
     # for debug source code for pytest --> see tox.ini section [testenv]
     "docker==7.2.0",
-    "pytest==9.1.1",
+    "pytest==9.2.0",
     "pytest-mock==3.17.0",
     "pytest-asyncio==1.4.1",
     "httpx==0.28.1",
