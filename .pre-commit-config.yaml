@@ -53,14 +53,12 @@ repos:
         types: [text]
   - repo: local
     hooks:
-      - id: mypy
-        name: mypy
-        entry: uv run mypy
+      - id: ty
+        name: ty
+        entry: uv run ty check
         language: system
         types: [python]
-        exclude: (^tests/)
-        args: [--config-file, pyproject.toml]
-        require_serial: true  # Serial processing is required for mypy (better performance and error reporting)
+        pass_filenames: false  # ty checks the scope configured in [tool.ty.src], it resolves cross-file types
   - repo: local
     hooks:
       - id: uv-lock

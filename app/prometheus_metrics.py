@@ -32,7 +32,7 @@ def _sanitize_format_label(export_format: str) -> str:
 
 # Import StrictDoc version
 try:
-    from strictdoc import __version__ as strictdoc_version  # type: ignore[import-untyped]
+    from strictdoc import __version__ as strictdoc_version
 except ImportError:
     strictdoc_version = "unknown"
 
