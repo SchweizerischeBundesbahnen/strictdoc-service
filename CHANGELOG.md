@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.0.1](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/compare/v1.0.0...v1.0.1) (2026-11-07)
+
+
+### Bug Fixes
+
+* **deps:** update dependency coverage to v7.17.1 ([b9b6395](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/b9b6395e6c013ecd6ca82c652f150a7224e9212a))
+* **deps:** update dependency pytest-asyncio to v1.4.1.post1 ([367dbd7](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/367dbd74ce401692c36e1ef75c8836e4cf651855))
+* **deps:** update dependency tox to v4.67.7 ([fa53ccd](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/fa53ccd85992d5ff8ca98035616e4a13b14ba711))
+* **deps:** update dependency tox to v4.67.8 ([5f4f04d](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/5f4f04d9dc281691e94aad7c0ee5ca0c3def3da0))
+* **deps:** update dependency tox-uv to v1.37.4 ([2852fba](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/2852fbac26240cf801a8556808918aeb92aa2eb0))
+* **deps:** update prom/prometheus:latest docker digest to e049876 ([9b2a08e](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/9b2a08ed2d6d6a69c4c5639c7148b4384236210c))
+* **deps:** update registry.access.redhat.com/ubi9/ubi-minimal docker tag to v9.8-1793862054 ([030affe](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/030affea8d1382fbe99f12818e84c10a6d4d4a9f))
+
 ## 1.0.0 (2026-11-04)
 
 
