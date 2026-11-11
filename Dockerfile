@@ -2,7 +2,7 @@
 # Copy uv from official image (version matches .tool-versions)
 FROM ghcr.io/astral-sh/uv:0.13.7@sha256:96f40d3904aad8d0bd010539001d36c8e2188b981e1334471a90c4a1d93bb490 AS uv-source
 
-FROM registry.access.redhat.com/ubi9/ubi-minimal:9.8-1794186349@sha256:f26ef64172ea61f5ac5ba4be8c5c738bf8760b22b3e5148ce7b40f7308ab32db
+FROM registry.access.redhat.com/ubi9/ubi-minimal:9.9-1793829856@sha256:ecb40c7bdfa5b0bb71e978c98c7cf56ce38edf1f8fb3561078acbc4b13698c07
 
 ARG APP_IMAGE_VERSION=0.0.0
 ENV WORKING_DIR="/opt/strictdoc" \
