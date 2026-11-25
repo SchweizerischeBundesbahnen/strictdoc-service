@@ -44,6 +44,9 @@ test = [
 [tool.uv]
 # Set to false because this project is an application, not a library
 package = false
+# strictdoc pins tree-sitter==0.25.2, which has no wheel for Python 3.15.
+# 0.27.0 ships wheels for 3.11 to 3.15. Drop this once strictdoc moves on.
+override-dependencies = ["tree-sitter==0.27.0"]
 
 [tool.ruff]
 line-length = 240
