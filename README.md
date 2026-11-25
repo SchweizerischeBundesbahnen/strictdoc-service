@@ -18,10 +18,10 @@ Built on **Red Hat Universal Base Image (UBI)** for enterprise-grade security, s
 ## Features
 
 - Simple REST API to access [StrictDoc](https://github.com/strictdoc-project/strictdoc) (version pinned in `pyproject.toml`)
-- **Red Hat UBI 9 base image** - Enterprise-grade security and OpenShift compatibility
+- **Red Hat UBI 10 base image** - Enterprise-grade security and OpenShift compatibility
 - **Fast builds** - Pre-compiled wheels, millisecond dependency installation with uv
 - **Prometheus metrics** - Built-in monitoring with dedicated metrics endpoint (port 9183)
-- Compatible with amd64 and arm64 architectures
+- Compatible with amd64 (x86-64-v3 CPU required) and arm64 architectures
 - Easily deployable via Docker or Docker Compose
 - Configurable port and logging level
 - Support for multiple export formats:
@@ -161,13 +161,14 @@ Replace 0.0.0 with the desired version number.
 
 #### About the Base Image
 
-This service uses **Red Hat Universal Base Image (UBI) 9 Minimal** for optimal performance and compatibility:
+This service uses **Red Hat Universal Base Image (UBI) 10 Minimal** for optimal performance and compatibility:
 
 - **Image size**: ~604MB (optimized for enterprise deployment)
 - **Python installation**: Python 3.13 via uv (installed to `/opt/python` for non-root access)
 - **Dependency management**: Ultra-fast installation with pre-compiled wheels (milliseconds vs minutes)
 - **Security**: Regular security updates from Red Hat, enterprise-grade support
 - **Compatibility**: OpenShift ready, glibc-based for maximum package compatibility
+- **CPU**: on amd64, UBI 10 requires an x86-64-v3 CPU (AVX2). Check with `/lib64/ld-linux-x86-64.so.2 --help | grep supported`
 
 **Why not Alpine?** While Alpine Linux produces smaller images, it uses musl libc which causes compilation issues with some Python packages (tree-sitter) on arm64 architecture. UBI provides the best balance of size, speed, and compatibility.
 
