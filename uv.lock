@@ -1233,7 +1233,7 @@ wheels = [
 
 [[package]]
 name = "strictdoc"
-version = "0.31.1"
+version = "0.32.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "beautifulsoup4" },
@@ -1252,6 +1252,7 @@ dependencies = [
     { name = "pypdf" },
     { name = "python-datauri" },
     { name = "python-multipart" },
+    { name = "pyyaml" },
     { name = "reqif" },
     { name = "robotframework" },
     { name = "spdx-tools" },
@@ -1270,9 +1271,9 @@ dependencies = [
     { name = "xlrd" },
     { name = "xlsxwriter" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/75/40/977f41cfe2f64f44bbd6d348e0fe0465300e95911b79930927201f1fdffc/strictdoc-0.31.1.tar.gz", hash = "sha256:0f5a55aa5978ad2c9914550164d4999e37630bf536cfacfb9140e3d6933fa81c", size = 7698587, upload-time = "2026-11-21T19:46:19.762Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/a8/d6/df12c738080468e6f539403e31e20bdb6e6587c1693017cc35167464b824/strictdoc-0.32.1.tar.gz", hash = "sha256:5f85e0b0b06c181c093754da347692c8b7c50c786e71af7d7ba11f6c30222698", size = 7704333, upload-time = "2026-11-22T19:45:41.98Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/38/b6/a3128f2edb5455df6ee802b2067dc8533230aa3ec20f5a069af832ed3c19/strictdoc-0.31.1-py3-none-any.whl", hash = "sha256:54517f322a429461b00b7b5a81028be5895106eb340591bc6b05bb62f2e18ec8", size = 8035406, upload-time = "2026-11-21T19:46:18.009Z" },
+    { url = "https://files.pythonhosted.org/packages/82/d4/759bd555ed816ef74ee41c178b42f438d72bad8ae377fb375273f7b06a30/strictdoc-0.32.1-py3-none-any.whl", hash = "sha256:5abdb88769df01652fe6d190dd818e0898c60bbd49c0aacb09cbf587efd56b20", size = 8042657, upload-time = "2026-11-22T19:45:40.31Z" },
 ]
 
 [[package]]
@@ -1312,7 +1313,7 @@ requires-dist = [
     { name = "pathvalidate", specifier = "==3.3.1" },
     { name = "prometheus-client", specifier = "==0.26.0" },
     { name = "prometheus-fastapi-instrumentator", specifier = "==8.1.0" },
-    { name = "strictdoc", specifier = "==0.31.1" },
+    { name = "strictdoc", specifier = "==0.32.1" },
     { name = "urllib3", specifier = "==2.8.0" },
     { name = "uvicorn", specifier = "==0.54.0" },
 ]
