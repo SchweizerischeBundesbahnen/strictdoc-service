@@ -1,5 +1,72 @@
 # Changelog
 
+## [1.1.0](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/compare/v1.0.0...v1.1.0) (2026-11-28)
+
+
+### Features
+
+* **deps:** update dependency strictdoc to v0.31.0 ([dd82375](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/dd823757113de77313b78996a1cc08c44c68ef35))
+* **deps:** update dependency strictdoc to v0.32.1 ([b560f98](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/b560f9846df9c6c2494f7b922e3ab7973c336f83))
+
+
+### Bug Fixes
+
+* **deps:** update dependency coverage to v7.17.1 ([b9b6395](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/b9b6395e6c013ecd6ca82c652f150a7224e9212a))
+* **deps:** update dependency coverage to v7.17.2 ([49a9b2c](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/49a9b2c5f13b1c4cef23a458615f249a52ebc686))
+* **deps:** update dependency coverage to v7.17.3 ([72bb4b1](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/72bb4b1161d2096d6e3bc490c2c876ece57d2c73))
+* **deps:** update dependency coverage to v7.17.4 ([9eedd9c](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/9eedd9cb624c7592063dc09aa9f6766154301561))
+* **deps:** update dependency coverage to v7.17.5 ([492390e](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/492390e2be6985727aa28b1158d1fe537e9731ef))
+* **deps:** update dependency fastapi to v0.162.2 ([20188ed](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/20188edc3747b84084259a560f0575d394e81f09))
+* **deps:** update dependency fastapi to v0.162.4 ([6489494](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/648949485b70682ebd61f41de16f1b36d9cebf73))
+* **deps:** update dependency fastapi to v0.162.5 ([fe4eda5](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/fe4eda544f3369784302eeb3218c85246888e6e0))
+* **deps:** update dependency fastapi to v0.162.7 ([6884bef](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/6884bef7164f9fdcc36682fb3f7658d57dee6f3e))
+* **deps:** update dependency fastapi to v0.163.0 ([51bb7c6](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/51bb7c65a56aa1792bdc8ab2241f28225dc26733))
+* **deps:** update dependency fastapi to v0.163.1 ([281ac1b](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/281ac1bfabe30962f53284ed6839c96704d0eb6e))
+* **deps:** update dependency fastapi to v0.163.2 ([e85f6b7](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/e85f6b7105df9c9ce555e94ea2308a7c711db039))
+* **deps:** update dependency fastapi to v0.165.0 ([02cb5ec](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/02cb5ece3269ee9b5f05a417234f4af0c1aea081))
+* **deps:** update dependency pytest-asyncio to v1.4.1.post1 ([367dbd7](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/367dbd74ce401692c36e1ef75c8836e4cf651855))
+* **deps:** update dependency pytest-asyncio to v1.5.0 ([0829346](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/08293466e95bc5bcdd93662448bf55371b87ac4e))
+* **deps:** update dependency ruff to v0.17.4 ([80350b4](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/80350b4f15ad7f181a7214a833037ef15876f86d))
+* **deps:** update dependency ruff to v0.17.5 ([c0d0631](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/c0d0631afbcf7244cbfe79552c9315bbe49de485))
+* **deps:** update dependency ruff to v0.17.6 ([d75ed21](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/d75ed21c1a9ca22d1e619e967ef91ef03b8d0889))
+* **deps:** update dependency strictdoc to v0.31.1 ([3f0defb](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/3f0defb908b8d08bb6224c30247a0888e453a60a))
+* **deps:** update dependency tox to v4.67.11 ([c0de952](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/c0de9529852607443aa2e6397537685b3aa7908a))
+* **deps:** update dependency tox to v4.67.12 ([8461feb](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/8461feb153247f47a54ce787ec76a1f7f131f090))
+* **deps:** update dependency tox to v4.67.13 ([0b46021](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/0b460211710dfe1ec48332e35da557bbc465db09))
+* **deps:** update dependency tox to v4.67.15 ([71b4864](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/71b486462efd57be74da0e71449be43c50a31476))
+* **deps:** update dependency tox to v4.67.16 ([42e6f2c](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/42e6f2c8f83c968fb7a5bff5f9f3526c8cecbf45))
+* **deps:** update dependency tox to v4.67.7 ([fa53ccd](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/fa53ccd85992d5ff8ca98035616e4a13b14ba711))
+* **deps:** update dependency tox to v4.67.8 ([5f4f04d](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/5f4f04d9dc281691e94aad7c0ee5ca0c3def3da0))
+* **deps:** update dependency tox to v4.67.9 ([801c507](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/801c50786790f1f2da54c46af5d0101ddce85ad8))
+* **deps:** update dependency tox-uv to v1.37.4 ([2852fba](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/2852fbac26240cf801a8556808918aeb92aa2eb0))
+* **deps:** update dependency tox-uv to v1.37.5 ([463ad9d](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/463ad9da0ea8ec0c6a65a8a93ab359873043b9d8))
+* **deps:** update dependency tox-uv to v1.37.6 ([7c08c1d](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/7c08c1d1cdfddee2df97ef676e317441076f32f8))
+* **deps:** update dependency tox-uv to v1.37.7 ([ad96bd8](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/ad96bd84ace3d5e9031317c5f85ae482afb20574))
+* **deps:** update dependency tox-uv to v1.37.9 ([0db0ef0](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/0db0ef04cec59e53b8bc7bac6ce7bd63ed719806))
+* **deps:** update dependency ty to v0.0.100 ([566d55e](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/566d55e1abb760cbaf3e89603963b0e3575774cb))
+* **deps:** update dependency ty to v0.0.101 ([092e6a6](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/092e6a60df1bbf0e05ed4076d2a5104a882a1fd5))
+* **deps:** update dependency ty to v0.0.104 ([7ce5c5b](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/7ce5c5bf588c48159ce5c099b95248cb45c4eb0d))
+* **deps:** update dependency ty to v0.0.105 ([edbb506](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/edbb5066bee1c9562cfefb622288726bebd01797))
+* **deps:** update dependency ty to v0.0.107 ([2c51cc2](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/2c51cc2ce0372cedb05708962b593a7e31f34fff))
+* **deps:** update dependency ty to v0.0.108 ([ac442bf](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/ac442bf9ed9d99730dae36717a696a4380035bd0))
+* **deps:** update dependency ty to v0.0.109 ([d582a66](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/d582a6602169132f0709f9c5c4c1f2d9500c5985))
+* **deps:** update dependency ty to v0.0.110 ([c5bae34](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/c5bae34c8a3b355bc43af260f9ea176f56f3b42f))
+* **deps:** update dependency ty to v0.0.97 ([c3b23c0](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/c3b23c0716c386a7df4434aa6a24ce5adc998777))
+* **deps:** update dependency ty to v0.0.99 ([2227fb3](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/2227fb3d9577338c07b970b72594f40ad681c494))
+* **deps:** update ghcr.io/astral-sh/uv docker tag to v0.13.10 ([85b4413](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/85b4413ae6459789f22e62916c24933f929ec6b8))
+* **deps:** update ghcr.io/astral-sh/uv docker tag to v0.13.8 ([cc72adb](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/cc72adb6f5e718f8ba51f162da09437a6cd64f92))
+* **deps:** update ghcr.io/astral-sh/uv docker tag to v0.13.9 ([1759c5a](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/1759c5a2aebd90072f66f6efc8dae6d398093d7a))
+* **deps:** update grafana/grafana:latest docker digest to 0615ec4 ([51be8e5](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/51be8e54e63d249fec4228ae111133b12fbc3e33))
+* **deps:** update grafana/grafana:latest docker digest to 8155640 ([85ca1d4](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/85ca1d439ef36de648558e0f717caf6d3e9ef197))
+* **deps:** update prom/prometheus:latest docker digest to e049876 ([9b2a08e](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/9b2a08ed2d6d6a69c4c5639c7148b4384236210c))
+* **deps:** update python to v3.15.2 ([#120](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/issues/120)) ([bb6c16a](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/bb6c16af8b42b2a2494adcf9517297f1ab455152))
+* **deps:** update registry.access.redhat.com/ubi9/ubi-minimal docker tag to v9.8-1793862054 ([030affe](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/030affea8d1382fbe99f12818e84c10a6d4d4a9f))
+* **deps:** update registry.access.redhat.com/ubi9/ubi-minimal docker tag to v9.8-1794186349 ([114a509](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/114a5091d83132bba2a7ceb3a1bdccab224c4af5))
+* **deps:** update registry.access.redhat.com/ubi9/ubi-minimal docker tag to v9.9-1793829856 ([1b62312](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/1b623126049093bca8c980f1a595ec540e07b0df))
+* **deps:** update registry.access.redhat.com/ubi9/ubi-minimal docker tag to v9.9-1794467051 ([e5d1e95](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/e5d1e95f918bce0c5b2ed4db7472cb76e3be3557))
+* **deps:** update registry.access.redhat.com/ubi9/ubi-minimal docker tag to v9.9-1795001629 ([c144a99](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/c144a999207ed33d3566e672a4d3351aa33c04c8))
+* **deps:** update registry.access.redhat.com/ubi9/ubi-minimal docker tag to v9.9-1795198179 ([8e4fb78](https://github.com/SchweizerischeBundesbahnen/strictdoc-service/commit/8e4fb78c66cde9bde8c65853818a47ea29fa2fd1))
+
 ## 1.0.0 (2026-11-04)
 
 
